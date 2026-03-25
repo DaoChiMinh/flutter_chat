@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
 
+class ChatInputCompo extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // TODO: implement build
+    throw Container();
+  }
+}
+
 Widget ChatInput() {
   return Container(
     padding: EdgeInsets.fromLTRB(12, 8, 12, 26),
