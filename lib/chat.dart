@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_chat/Compoment/chat_boxmsg.dart';
 import 'package:flutter_chat/Compoment/chat_input.dart';
+import 'package:flutter_chat/Module/chatData.dart';
+import 'package:flutter_chat/Module/chatobj.dart';
 
 class Chatpage extends StatefulWidget {
   const Chatpage({super.key});
@@ -23,7 +26,7 @@ class _ChatpageState extends State<Chatpage> {
           // padding: EdgeInsets.symmetric(vertical: 20),
           child: Column(
             children: [
-              Expanded(child: Container()),
+              Expanded(child: ChatMessage(msg: Chatmsgobject(),)),
               ChatInput(),
             ],
           ),
