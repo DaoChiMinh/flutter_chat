@@ -42,8 +42,8 @@ class ChatInputState {
 // ============================================================
 
 class ChatInput extends StatefulWidget {
-  const ChatInput({super.key, required this.msgs});
-  final List<Chatmsgobject> msgs;
+  const ChatInput({super.key, required this.onSend});
+  final ValueChanged<Chatmsgobject> onSend;
   @override
   State<ChatInput> createState() => _ChatInputState();
 }
@@ -112,16 +112,18 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   void _onSendPressed() {
+    widget.onSend(
+      Chatmsgobject()
+        ..Comment = "minhdc"
+        ..isMe = true
+        ..Note = _textController.text
+        ..Send_Date = DateTime.now(),
+    );
+
+    _textController.clear();
     setState(() {
-      widget.msgs.add(
-        Chatmsgobject()
-          ..Comment = "minhdc"
-          ..isMe = true
-          ..Note = _textController.text,
-      );
+      _state = _state.copyWith(isEditing: false);
     });
-    _textController.text = "";
-    _focusNode.unfocus();
   }
 
   // ----------------------------------------------------------

@@ -13,6 +13,10 @@ class Chatpage extends StatefulWidget {
 }
 
 class _ChatpageState extends State<Chatpage> {
+  final _msgsNotifier = ValueNotifier<List<Chatmsgobject>>(
+    List.from(Chatmsgobjects),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -28,8 +32,19 @@ class _ChatpageState extends State<Chatpage> {
           // padding: EdgeInsets.symmetric(vertical: 20),
           child: Column(
             children: [
-              Expanded(child: ChatMessage(msgs: Chatmsgobjects)),
-              ChatInput(msgs: Chatmsgobjects),
+              Expanded(
+                child: ValueListenableBuilder<List<Chatmsgobject>>(
+                  valueListenable: _msgsNotifier,
+                  builder: (context, msgs, _) {
+                    return ChatMessage(msgs: msgs);
+                  },
+                ),
+              ),
+              ChatInput(
+                onSend: (msg) {
+                  _msgsNotifier.value = [..._msgsNotifier.value, msg];
+                },
+              ),
             ],
           ),
         ),
