@@ -293,7 +293,7 @@ class _ChatEmojiPanelState extends State<ChatEmojiPanel>
                       width: 28,
                       height: 28,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
+                      errorBuilder: (_, _, _) =>
                           const Icon(Icons.sticky_note_2_outlined, size: 20),
                     ),
                   ),
@@ -545,7 +545,7 @@ class _AnimatedStickerCellState extends State<_AnimatedStickerCell>
           child: Image.network(
             widget.sticker.url,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) =>
+            errorBuilder: (_, _, _) =>
                 const Icon(Icons.broken_image, color: Colors.grey),
           ),
         ),
@@ -628,7 +628,7 @@ class _StickerPreviewBubbleState extends State<_StickerPreviewBubble>
           child: Image.network(
             widget.url,
             fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) =>
+            errorBuilder: (_, _, _) =>
                 const Icon(Icons.broken_image, size: 48, color: Colors.grey),
           ),
         ),
@@ -714,7 +714,7 @@ class _ChatStickerBubbleState extends State<ChatStickerBubble>
         child: Image.network(
           widget.url,
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) =>
+          errorBuilder: (_, _, _) =>
               const Icon(Icons.broken_image, color: Colors.grey, size: 48),
         ),
       ),

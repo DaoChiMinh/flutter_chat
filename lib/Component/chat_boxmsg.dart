@@ -120,6 +120,7 @@ class _MessageBubble extends StatelessWidget {
                           files: msg.strDataFile,
                           type: ChatmsgObjtype.image,
                           onTapItem: (path) => _openImagePath(context, path),
+                          onTapMore: () => _openImageGallery(context),
                         ),
 
                       if (type == ChatmsgObjtype.video)
@@ -231,6 +232,16 @@ class _MessageBubble extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => ChatImageViewerPage(path: path)),
+    );
+  }
+
+  void _openImageGallery(BuildContext context) {
+    if (msg.strDataFile.isEmpty) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatImageGalleryPage(paths: msg.strDataFile),
+      ),
     );
   }
 
@@ -432,109 +443,266 @@ class ChatMediaGrid extends StatelessWidget {
   final List<String> files;
   final ChatmsgObjtype type;
   final ValueChanged<String> onTapItem;
+  final VoidCallback? onTapMore;
 
   const ChatMediaGrid({
     super.key,
     required this.files,
     required this.type,
     required this.onTapItem,
+    this.onTapMore,
   });
+
+  static const _gap = 2.0;
+  static const _radius = 8.0;
 
   @override
   Widget build(BuildContext context) {
     if (files.isEmpty) return const SizedBox.shrink();
 
     final count = files.length;
-    final maxWidth = MediaQuery.of(context).size.width * 0.68;
-    const spacing = 4.0;
+    final maxW = MediaQuery.of(context).size.width * 0.68;
 
+    // ── 1 ảnh: full width ──
     if (count == 1) {
-      return _item(files[0], maxWidth, maxWidth * 0.78);
+      return _item(
+        files[0],
+        maxW,
+        maxW * 0.75,
+        borderRadius: BorderRadius.circular(_radius),
+      );
     }
 
+    // ── 2 ảnh: ngang đều ──
     if (count == 2) {
-      final size = (maxWidth - spacing) / 2;
+      final w = (maxW - _gap) / 2;
+      final h = w * 1.15;
       return Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _item(files[0], size, size),
-          const SizedBox(width: spacing),
-          _item(files[1], size, size),
+          _item(
+            files[0],
+            w,
+            h,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(_radius),
+              bottomLeft: Radius.circular(_radius),
+            ),
+          ),
+          const SizedBox(width: _gap),
+          _item(
+            files[1],
+            w,
+            h,
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(_radius),
+              bottomRight: Radius.circular(_radius),
+            ),
+          ),
         ],
       );
     }
 
+    // ── 3 ảnh: 1 lớn bên trái + 2 nhỏ xếp dọc bên phải (Zalo style) ──
     if (count == 3) {
-      final size = (maxWidth - spacing * 2) / 3;
+      final bigW = maxW * 0.6;
+      final smallW = maxW - bigW - _gap;
+      final totalH = maxW * 0.8;
+      final smallH = (totalH - _gap) / 2;
       return Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _item(files[0], size, size),
-          const SizedBox(width: spacing),
-          _item(files[1], size, size),
-          const SizedBox(width: spacing),
-          _item(files[2], size, size),
+          _item(
+            files[0],
+            bigW,
+            totalH,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(_radius),
+              bottomLeft: Radius.circular(_radius),
+            ),
+          ),
+          const SizedBox(width: _gap),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _item(
+                files[1],
+                smallW,
+                smallH,
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(_radius),
+                ),
+              ),
+              const SizedBox(height: _gap),
+              _item(
+                files[2],
+                smallW,
+                smallH,
+                borderRadius: const BorderRadius.only(
+                  bottomRight: Radius.circular(_radius),
+                ),
+              ),
+            ],
+          ),
         ],
       );
     }
 
+    // ── 4 ảnh: grid 2×2 ──
     if (count == 4) {
-      final size = (maxWidth - spacing) / 2;
+      final cellW = (maxW - _gap) / 2;
+      final cellH = cellW * 0.85;
       return Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _item(files[0], size, size),
-              const SizedBox(width: spacing),
-              _item(files[1], size, size),
+              _item(
+                files[0],
+                cellW,
+                cellH,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(_radius),
+                ),
+              ),
+              const SizedBox(width: _gap),
+              _item(
+                files[1],
+                cellW,
+                cellH,
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(_radius),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: spacing),
+          const SizedBox(height: _gap),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _item(files[2], size, size),
-              const SizedBox(width: spacing),
-              _item(files[3], size, size),
+              _item(
+                files[2],
+                cellW,
+                cellH,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(_radius),
+                ),
+              ),
+              const SizedBox(width: _gap),
+              _item(
+                files[3],
+                cellW,
+                cellH,
+                borderRadius: const BorderRadius.only(
+                  bottomRight: Radius.circular(_radius),
+                ),
+              ),
             ],
           ),
         ],
       );
     }
 
-    final size = (maxWidth - spacing * 2) / 3;
-    final rows = <List<String>>[];
-    for (int i = 0; i < files.length; i += 3) {
-      rows.add(files.sublist(i, (i + 3 > files.length) ? files.length : i + 3));
-    }
-
+    // ── 5+ ảnh: hiển thị 4 ảnh đầu, ảnh thứ 4 có overlay "+N" ──
+    final remaining = count - 4;
+    final cellW = (maxW - _gap) / 2;
+    final cellH = cellW * 0.85;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: List.generate(rows.length, (rowIndex) {
-        final row = rows[rowIndex];
-        return Padding(
-          padding: EdgeInsets.only(bottom: rowIndex == rows.length - 1 ? 0 : spacing),
-          child: Row(
-            children: List.generate(row.length, (index) {
-              return Padding(
-                padding: EdgeInsets.only(right: index == row.length - 1 ? 0 : spacing),
-                child: _item(row[index], size, size),
-              );
-            }),
-          ),
-        );
-      }),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _item(
+              files[0],
+              cellW,
+              cellH,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(_radius),
+              ),
+            ),
+            const SizedBox(width: _gap),
+            _item(
+              files[1],
+              cellW,
+              cellH,
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(_radius),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: _gap),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _item(
+              files[2],
+              cellW,
+              cellH,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(_radius),
+              ),
+            ),
+            const SizedBox(width: _gap),
+            _item(
+              files[3],
+              cellW,
+              cellH,
+              borderRadius: const BorderRadius.only(
+                bottomRight: Radius.circular(_radius),
+              ),
+              overlayCount: remaining,
+            ),
+          ],
+        ),
+      ],
     );
   }
 
-  Widget _item(String path, double w, double h) {
+  Widget _item(
+    String path,
+    double w,
+    double h, {
+    BorderRadius borderRadius = BorderRadius.zero,
+    int overlayCount = 0,
+  }) {
     return GestureDetector(
-      onTap: () => onTapItem(path),
+      onTap: () {
+        if (overlayCount > 0 && onTapMore != null) {
+          onTapMore!();
+        } else {
+          onTapItem(path);
+        }
+      },
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: borderRadius,
         child: SizedBox(
           width: w,
           height: h,
-          child: type == ChatmsgObjtype.video
-              ? _buildVideoThumb()
-              : _buildImage(path),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              type == ChatmsgObjtype.video
+                  ? _buildVideoThumb()
+                  : _buildImage(path),
+              if (overlayCount > 0)
+                Container(
+                  color: Colors.black.withOpacity(0.45),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '+$overlayCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -545,7 +713,7 @@ class ChatMediaGrid extends StatelessWidget {
       return Image.network(
         path,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _fallback(),
+        errorBuilder: (_, __, ___) => _fallback(),
       );
     }
 
@@ -553,7 +721,7 @@ class ChatMediaGrid extends StatelessWidget {
       return Image.file(
         File(path),
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _fallback(),
+        errorBuilder: (_, __, ___) => _fallback(),
       );
     }
 
@@ -562,7 +730,7 @@ class ChatMediaGrid extends StatelessWidget {
       return Image.memory(
         bytes,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _fallback(),
+        errorBuilder: (_, __, ___) => _fallback(),
       );
     }
 
@@ -605,6 +773,83 @@ class ChatMediaGrid extends StatelessWidget {
       color: const Color(0xFFF1F3F5),
       alignment: Alignment.center,
       child: const Icon(Icons.broken_image, color: Colors.grey),
+    );
+  }
+}
+
+class ChatImageGalleryPage extends StatefulWidget {
+  final List<String> paths;
+  final int initialIndex;
+
+  const ChatImageGalleryPage({
+    super.key,
+    required this.paths,
+    this.initialIndex = 0,
+  });
+
+  @override
+  State<ChatImageGalleryPage> createState() => _ChatImageGalleryPageState();
+}
+
+class _ChatImageGalleryPageState extends State<ChatImageGalleryPage> {
+  late final PageController _pageCtrl;
+  late int _currentPage;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentPage = widget.initialIndex;
+    _pageCtrl = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageCtrl.dispose();
+    super.dispose();
+  }
+
+  Widget _buildPageImage(String path) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return Image.network(path, fit: BoxFit.contain);
+    }
+    if (File(path).existsSync()) {
+      return Image.file(File(path), fit: BoxFit.contain);
+    }
+    try {
+      final raw = path.contains(',') ? path.split(',').last : path;
+      final bytes = base64Decode(raw);
+      return Image.memory(bytes, fit: BoxFit.contain);
+    } catch (_) {}
+    return const Icon(Icons.broken_image, color: Colors.white, size: 48);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(
+          '${_currentPage + 1} / ${widget.paths.length}',
+          style: const TextStyle(fontSize: 16),
+        ),
+        centerTitle: true,
+      ),
+      body: PageView.builder(
+        controller: _pageCtrl,
+        itemCount: widget.paths.length,
+        onPageChanged: (i) => setState(() => _currentPage = i),
+        itemBuilder: (_, i) {
+          return Center(
+            child: InteractiveViewer(
+              minScale: 0.8,
+              maxScale: 4,
+              child: _buildPageImage(widget.paths[i]),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -667,7 +912,7 @@ class _MediaGridItem extends StatelessWidget {
       return Image.network(
         path,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _fallback(Icons.broken_image),
+        errorBuilder: (_, __, ___) => _fallback(Icons.broken_image),
       );
     }
 
@@ -675,7 +920,7 @@ class _MediaGridItem extends StatelessWidget {
       return Image.file(
         File(path),
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _fallback(Icons.broken_image),
+        errorBuilder: (_, __, ___) => _fallback(Icons.broken_image),
       );
     }
 
@@ -698,91 +943,6 @@ class _MediaGridItem extends StatelessWidget {
     );
   }
 }
-
-// class _ReplyPreview extends StatelessWidget {
-//   final Chatmsgobject reply;
-
-//   const _ReplyPreview({required this.reply});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     String preview = "Tin nhắn";
-//     if (reply.isRecalled) {
-//       preview = "Tin nhắn đã được thu hồi";
-//     } else if (reply.Note.trim().isNotEmpty) {
-//       preview = reply.Note.trim();
-//     } else {
-//       switch (reply.objtype()) {
-//         case ChatmsgObjtype.image:
-//           preview = "[Hình ảnh]";
-//           break;
-//         case ChatmsgObjtype.video:
-//           preview = "[Video]";
-//           break;
-//         case ChatmsgObjtype.pdf:
-//         case ChatmsgObjtype.doc:
-//         case ChatmsgObjtype.excel:
-//         case ChatmsgObjtype.file:
-//           preview = "[Tệp đính kèm]";
-//           break;
-//         case ChatmsgObjtype.url:
-//           preview = "[Liên kết]";
-//           break;
-//         default:
-//           preview = "Tin nhắn";
-//       }
-//     }
-
-//     return Container(
-//       margin: const EdgeInsets.only(bottom: 8),
-//       padding: const EdgeInsets.only(left: 8),
-//       decoration: const BoxDecoration(
-//         border: Border(left: BorderSide(color: Color(0xFF00D287), width: 3)),
-//       ),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Text(
-//             reply.isMe ? "Bạn" : reply.User_Name,
-//             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-//           ),
-//           Text(
-//             preview,
-//             maxLines: 1,
-//             overflow: TextOverflow.ellipsis,
-//             style: const TextStyle(fontSize: 12, color: Colors.grey),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// class _StatusIcon extends StatelessWidget {
-//   final String status;
-
-//   const _StatusIcon({required this.status});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     switch (status) {
-//       case "sending":
-//         return const SizedBox(
-//           width: 14,
-//           height: 14,
-//           child: CircularProgressIndicator(strokeWidth: 1.6),
-//         );
-//       case "sent":
-//         return const Icon(Icons.check, size: 16, color: Colors.grey);
-//       case "received":
-//         return const Icon(Icons.done_all, size: 16, color: Colors.grey);
-//       case "read":
-//         return const Icon(Icons.done_all, size: 16, color: Colors.blue);
-//       default:
-//         return const SizedBox.shrink();
-//     }
-//   }
-// }
 
 class ChatMessageText extends StatelessWidget {
   final String text;
@@ -932,13 +1092,13 @@ class ChatMessageImage extends StatelessWidget {
         data,
         fit: BoxFit.cover,
         height: 200,
-        errorBuilder: (_, _, _) => _buildError(),
+        errorBuilder: (_, __, ___) => _buildError(),
       );
     } else if (File(data).existsSync()) {
       child = Image.file(
         File(data),
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _buildError(),
+        errorBuilder: (_, __, ___) => _buildError(),
       );
     } else if (_isBase64) {
       final bytes = _decodeBase64(data);
@@ -947,7 +1107,7 @@ class ChatMessageImage extends StatelessWidget {
           : Image.memory(
               bytes,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _buildError(),
+              errorBuilder: (_, __, ___) => _buildError(),
             );
     } else {
       child = _buildError();
@@ -1147,7 +1307,7 @@ class ChatMessageVideo extends StatelessWidget {
                   ? Image(
                       image: thumbnail!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => _fallback(),
+                      errorBuilder: (_, __, ___) => _fallback(),
                     )
                   : _fallback(),
             ),
