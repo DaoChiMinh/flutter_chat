@@ -101,7 +101,9 @@ class _MessageBubble extends StatelessWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: msg.isMe ? const Color(0xFFD7FBE8) : Colors.white,
+                  color: type == ChatmsgObjtype.tex
+                      ? (msg.isMe ? const Color(0xFFD7FBE8) : Colors.white)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(16),
                     topRight: const Radius.circular(16),
@@ -122,7 +124,8 @@ class _MessageBubble extends StatelessWidget {
                           onTapItem: (path) => _openImagePath(context, path),
                           onTapMore: () => _openImageGallery(context),
                         ),
-
+                      if (type == ChatmsgObjtype.stiker)
+                        Image.network(msg.Note, height: 120),
                       if (type == ChatmsgObjtype.video)
                         ChatMediaGrid(
                           files: msg.strDataFile,
@@ -142,18 +145,18 @@ class _MessageBubble extends StatelessWidget {
                           rawText: msg.Note,
                           onTap: () => _openLink(context, msg.file),
                         ),
-
-                      if (msg.Note.trim().isNotEmpty)
-                        Padding(
-                          padding: EdgeInsets.only(
-                            top: hasMediaOrFileOrLink ? 8 : 0,
+                      if (type == ChatmsgObjtype.tex)
+                        if (msg.Note.trim().isNotEmpty)
+                          Padding(
+                            padding: EdgeInsets.only(
+                              top: hasMediaOrFileOrLink ? 8 : 0,
+                            ),
+                            child: ChatMessageText(
+                              text: msg.Note,
+                              isRecalled: msg.isRecalled,
+                              onTapLink: (url) => _openLink(context, url),
+                            ),
                           ),
-                          child: ChatMessageText(
-                            text: msg.Note,
-                            isRecalled: msg.isRecalled,
-                            onTapLink: (url) => _openLink(context, url),
-                          ),
-                        ),
 
                       const SizedBox(height: 4),
 
@@ -1135,6 +1138,69 @@ class ChatMessageImage extends StatelessWidget {
       alignment: Alignment.center,
       color: const Color(0xFFF5F5F5),
       child: const Icon(Icons.broken_image, color: Colors.grey),
+    );
+  }
+}
+
+class ChatMessageSticker extends StatelessWidget {
+  final String url;
+  final String rawText;
+  final VoidCallback onTap;
+
+  const ChatMessageSticker({
+    super.key,
+    required this.url,
+    required this.rawText,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F7FA),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE1E5EA)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.link, color: Colors.blueGrey),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    url,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.blue,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (rawText.trim().isNotEmpty)
+                    Text(
+                      rawText,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -114,9 +114,8 @@ class _ChatInputState extends State<ChatInput> {
         ..Comment = "minhdc"
         ..isMe = true
         ..Send_Date = DateTime.now()
-        ..strDataFile = [_sticker.url]
-        ..strTypeFile = 'gif'
-        ..Note = '',
+        ..Note = _sticker.url
+        ..strTypeFile = 'stiker',
     );
   }
 
