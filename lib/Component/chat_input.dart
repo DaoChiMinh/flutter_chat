@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_chat/Module/chatData.dart';
+import 'package:flutter_chat/Component/chat_emoji.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -12,12 +12,14 @@ import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 class ChatInputState {
   final bool isEditing;
   final bool isShowingGallery;
+  final bool isShowingEmoji;
   final List<AssetEntity> assets;
   final List<AssetEntity> selectedAssets;
 
   const ChatInputState({
     this.isEditing = false,
     this.isShowingGallery = false,
+    this.isShowingEmoji = false,
     this.assets = const [],
     this.selectedAssets = const [],
   });
@@ -25,12 +27,14 @@ class ChatInputState {
   ChatInputState copyWith({
     bool? isEditing,
     bool? isShowingGallery,
+    bool? isShowingEmoji,
     List<AssetEntity>? assets,
     List<AssetEntity>? selectedAssets,
   }) {
     return ChatInputState(
       isEditing: isEditing ?? this.isEditing,
       isShowingGallery: isShowingGallery ?? this.isShowingGallery,
+      isShowingEmoji: isShowingEmoji ?? this.isShowingEmoji,
       assets: assets ?? this.assets,
       selectedAssets: selectedAssets ?? this.selectedAssets,
     );
@@ -74,9 +78,37 @@ class _ChatInputState extends State<ChatInput> {
     });
   }
 
+  void _onEmojiToggled() {
+    final willShow = !_state.isShowingEmoji;
+    setState(() {
+      _state = _state.copyWith(
+        isShowingEmoji: willShow,
+        isShowingGallery: false, // ẩn gallery nếu đang mở
+      );
+      if (willShow) _focusNode.unfocus();
+    });
+  }
+
+  void _onEmojiSelected(String emoji) {
+    final text = _textController.text;
+    final sel = _textController.selection;
+    final newText = sel.isValid
+        ? text.replaceRange(sel.start, sel.end, emoji)
+        : text + emoji;
+    _textController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(
+        offset: sel.isValid ? sel.start + emoji.length : newText.length,
+      ),
+    );
+    setState(() {
+      _state = _state.copyWith(isEditing: newText.isNotEmpty);
+    });
+  }
+
   void _onTextFieldTapped() {
     setState(() {
-      _state = _state.copyWith(isShowingGallery: false);
+      _state = _state.copyWith(isShowingGallery: false, isShowingEmoji: false);
     });
   }
 
@@ -86,7 +118,10 @@ class _ChatInputState extends State<ChatInput> {
       await _loadPhotos();
     }
     setState(() {
-      _state = _state.copyWith(isShowingGallery: willShow);
+      _state = _state.copyWith(
+        isShowingGallery: willShow,
+        isShowingEmoji: false,
+      );
       if (willShow) _focusNode.unfocus();
     });
   }
@@ -123,7 +158,11 @@ class _ChatInputState extends State<ChatInput> {
     _textController.clear();
     _focusNode.unfocus();
     setState(() {
-      _state = _state.copyWith(isEditing: false);
+      _state = _state.copyWith(
+        isEditing: false,
+        isShowingEmoji: false,
+        isShowingGallery: false,
+      );
     });
   }
 
@@ -146,7 +185,11 @@ class _ChatInputState extends State<ChatInput> {
         ..Note = '',
     );
     setState(() {
-      _state = _state.copyWith(selectedAssets: [], isShowingGallery: false);
+      _state = _state.copyWith(
+        selectedAssets: [],
+        isShowingGallery: false,
+        isShowingEmoji: false,
+      );
     });
   }
   // ----------------------------------------------------------
@@ -196,11 +239,21 @@ class _ChatInputState extends State<ChatInput> {
             textController: _textController,
             focusNode: _focusNode,
             isEditing: _state.isEditing,
+            isShowingEmoji: _state.isShowingEmoji,
             onTextChanged: _onTextChanged,
             onTap: _onTextFieldTapped,
+            onEmojiPressed: _onEmojiToggled,
             onGalleryPressed: _onGalleryToggled,
             onSendPressed: _onSendPressed,
           ),
+          // Emoji panel
+          if (_state.isShowingEmoji && !_state.isEditing == false ||
+              _state.isShowingEmoji)
+            SizedBox(
+              height: 300,
+              child: ChatEmojiPanel(onEmojiSelected: _onEmojiSelected),
+            ),
+
           if (_state.isShowingGallery && !_state.isEditing)
             _GalleryGrid(
               assets: _state.assets,
@@ -219,17 +272,20 @@ class _InputRow extends StatelessWidget {
   final TextEditingController textController;
   final FocusNode focusNode;
   final bool isEditing;
+  final bool isShowingEmoji;
   final ValueChanged<String> onTextChanged;
   final VoidCallback onTap;
   final VoidCallback onGalleryPressed;
   final VoidCallback onSendPressed;
-
+  final VoidCallback onEmojiPressed;
   const _InputRow({
     required this.textController,
     required this.focusNode,
     required this.isEditing,
+    required this.isShowingEmoji,
     required this.onTextChanged,
     required this.onTap,
+    required this.onEmojiPressed,
     required this.onGalleryPressed,
     required this.onSendPressed,
   });
@@ -240,7 +296,10 @@ class _InputRow extends StatelessWidget {
       spacing: 6,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _IconBtn(icon: Icons.emoji_emotions_outlined, onPressed: () {}),
+        _IconBtn(
+          icon: Icons.emoji_emotions_outlined,
+          onPressed: onEmojiPressed,
+        ),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
