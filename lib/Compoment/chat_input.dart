@@ -201,6 +201,7 @@ class _ChatInputState extends State<ChatInput> {
     // Lấy tất cả album
     final albums = await PhotoManager.getAssetPathList(
       type: RequestType.image, // all: ảnh + video + file
+      onlyAll: true,
     );
 
     if (albums.isEmpty) return;
