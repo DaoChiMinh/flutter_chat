@@ -458,13 +458,66 @@ class _StickerTabBody extends StatefulWidget {
 class _StickerTabBodyState extends State<_StickerTabBody> {
   int _selectedPack = 0;
 
-  List<StickerPack> get _packs => kStickerPacks;
+  List<StickerPack>? _packs = [];
+  List<String> urlStikker = [
+    "http://mauiapidms.cybersoft.com.vn/stickers/bugcat_capoo",
+    "http://mauiapidms.cybersoft.com.vn/stickers/milk_and_mocha",
+    "http://mauiapidms.cybersoft.com.vn/stickers/peach_cat",
+  ];
+  @override
+  void initState() {
+    _packs = [];
+    for (int i = 0; i < urlStikker.length; i++) {
+      String packId = getInitialsFromUrl(urlStikker[i]);
+      String Id = getInitialsFromUrl2ChuCuoi(urlStikker[i]);
+
+      List<Sticker> _listSticker = [];
+      for (int j = 0; j < 100; j++) {
+        String _url = "${urlStikker[i]}/${Id}${j + 1}.gif";
+        _listSticker.add(
+          Sticker(id: "${Id}_{j + 1}", packId: packId, url: _url),
+        );
+      }
+      _packs!.add(
+        StickerPack(
+          id: packId,
+          name: packId,
+          thumbnail: "thumbnail",
+          stickers: _listSticker,
+        ),
+      );
+    }
+    super.initState();
+  }
+
+  String getInitialsFromUrl2ChuCuoi(String url) {
+    // Lấy param cuối
+    final lastSegment = Uri.parse(url).pathSegments.last;
+
+    // Tách theo _
+    final parts = lastSegment.split('_');
+
+    // Lấy chữ cái đầu mỗi phần
+    final initials = parts
+        .where((e) => e.isNotEmpty)
+        .map((e) => e[0].toUpperCase())
+        .join();
+
+    return initials;
+  }
+
+  String getInitialsFromUrl(String url) {
+    // Lấy param cuối
+    final lastSegment = Uri.parse(url).pathSegments.last;
+
+    return lastSegment;
+  }
 
   @override
   Widget build(BuildContext context) {
     final stickers = _selectedPack < 0
         ? RecentStickerManager.recents
-        : _packs[_selectedPack].stickers;
+        : _packs![_selectedPack].stickers;
 
     return Column(
       children: [
@@ -474,7 +527,7 @@ class _StickerTabBodyState extends State<_StickerTabBody> {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            itemCount: _packs.length + 1,
+            itemCount: _packs!.length + 1,
             separatorBuilder: (_, __) => const SizedBox(width: 6),
             itemBuilder: (_, i) {
               if (i == 0) {
@@ -493,7 +546,7 @@ class _StickerTabBodyState extends State<_StickerTabBody> {
               }
 
               final idx = i - 1;
-              final pack = _packs[idx];
+              final pack = _packs![idx];
               final isActive = _selectedPack == idx;
 
               return GestureDetector(
