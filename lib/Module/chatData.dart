@@ -25,7 +25,8 @@ List<Chatmsgobject> Chatmsgobjects = [
   Chatmsgobject()
     ..Comment = "Nguyễn Quang Minh"
     ..IdMsg = "1"
-    ..Note = "Cơ quan điều hành quyết định giảm 2.040 đồng/lít với xăng E5 RON 92 và giảm 3.890 đồng/lít với xăng RON 95. Sau điều chỉnh, giá bán lẻ với xăng E5 RON 92 là 28.070 đồng/lít và xăng RON 95 là 29.950 đồng/lít."
+    ..Note =
+        "Cơ quan điều hành quyết định giảm 2.040 đồng/lít với xăng E5 RON 92 và giảm 3.890 đồng/lít với xăng RON 95. Sau điều chỉnh, giá bán lẻ với xăng E5 RON 92 là 28.070 đồng/lít và xăng RON 95 là 29.950 đồng/lít."
     ..Send_Date = DateTime.now()
     ..isMe = true,
   Chatmsgobject()
@@ -39,7 +40,10 @@ List<Chatmsgobject> Chatmsgobjects = [
     ..Note = "Test video network abc abc"
     ..IdMsg = "3"
     ..Send_Date = DateTime.now()
-    ..strDataFile = "https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4"
+    ..strDataFile = [
+      "https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4",
+      "",
+    ]
     ..strTypeFile = "mp4"
     ..isMe = true,
   Chatmsgobject()
@@ -47,7 +51,7 @@ List<Chatmsgobject> Chatmsgobjects = [
     ..Note = "Mở link preview"
     ..IdMsg = "4"
     ..Send_Date = DateTime.now()
-    ..strDataFile = "https://openai.com"
+    ..strDataFile = ["https://openai.com"]
     ..strTypeFile = "url"
     ..isMe = true,
   Chatmsgobject()
@@ -55,7 +59,9 @@ List<Chatmsgobject> Chatmsgobjects = [
     ..Note = "Link ảnh"
     ..IdMsg = "5"
     ..Send_Date = DateTime.now()
-    ..strDataFile = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200"
+    ..strDataFile = [
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200",
+    ]
     ..strTypeFile = "jpg"
     ..isMe = false,
   Chatmsgobject()
@@ -63,7 +69,7 @@ List<Chatmsgobject> Chatmsgobjects = [
     ..Note = "Link file"
     ..IdMsg = "6"
     ..Send_Date = DateTime.now()
-    ..strDataFile = "https://www.orimi.com/pdf-test.pdf"
+    ..strDataFile = ["https://www.orimi.com/pdf-test.pdf"]
     ..strTypeFile = "pdf"
     ..isMe = true,
   Chatmsgobject()

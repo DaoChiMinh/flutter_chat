@@ -127,6 +127,28 @@ class _ChatInputState extends State<ChatInput> {
     });
   }
 
+  Future<void> _onSendImages() async {
+    if (_state.selectedAssets.isEmpty) return;
+    List<String> _file = [];
+
+    for (final asset in _state.selectedAssets) {
+      final file = await asset.file; // ← lấy path thực từ device
+      if (file == null) continue;
+      _file.add(file.path);
+    }
+    widget.onSend(
+      Chatmsgobject()
+        ..Comment = "minhdc"
+        ..isMe = true
+        ..Send_Date = DateTime.now()
+        ..strDataFile = _file
+        ..strTypeFile = 'jpg'
+        ..Note = '',
+    );
+    setState(() {
+      _state = _state.copyWith(selectedAssets: [], isShowingGallery: false);
+    });
+  }
   // ----------------------------------------------------------
   // Data
   // ----------------------------------------------------------
@@ -185,6 +207,7 @@ class _ChatInputState extends State<ChatInput> {
               selectedAssets: _state.selectedAssets,
               onAssetToggled: _onAssetToggled,
               onCameraPressed: _onCameraPressed,
+              onConfirm: _onSendImages,
             ),
         ],
       ),
@@ -256,12 +279,13 @@ class _GalleryGrid extends StatelessWidget {
   final List<AssetEntity> selectedAssets;
   final ValueChanged<AssetEntity> onAssetToggled;
   final VoidCallback onCameraPressed;
-
+  final VoidCallback onConfirm;
   const _GalleryGrid({
     required this.assets,
     required this.selectedAssets,
     required this.onAssetToggled,
     required this.onCameraPressed,
+    required this.onConfirm,
   });
 
   @override
@@ -300,7 +324,7 @@ class _GalleryGrid extends StatelessWidget {
               bottom: 20,
               left: 6,
               child: FilledButton(
-                onPressed: () {},
+                onPressed: onConfirm,
                 style: ButtonStyle(),
                 child: Text("Xác nhận"),
               ),

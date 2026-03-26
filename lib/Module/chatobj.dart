@@ -21,8 +21,9 @@ class Chatmsgobject {
   String Note = ""; //noi dung
   DateTime? Send_Date;
   //ChatmsgObjtype objtype => V_CheckType();
-  String strDataFile =
-      ""; // nếu kiểu image, video, file thì là strbase64 hoặc Url, url: là UrlFile
+  List<String> strDataFile =
+      []; // nếu kiểu image, video, file thì là strbase64 hoặc Url, url: là UrlFile
+  //List<String>? strDataFiles = strDataFile.split(";");
   String strTypeFile = "";
   Chatmsgobject? replyMsg; // nội dung tinh nhắn trả lời
 
