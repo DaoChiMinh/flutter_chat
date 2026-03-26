@@ -474,7 +474,7 @@ class _StickerTabBodyState extends State<_StickerTabBody> {
 
       List<Sticker> listSticker = [];
       for (int j = 0; j < 100; j++) {
-        String _url = "${urlStikker[i]}/${Id}${j + 1}.gif";
+        String _url = "${urlStikker[i]}/$Id${j + 1}.gif";
         listSticker.add(
           Sticker(id: "${Id}_{j + 1}", packId: packId, url: _url),
         );
