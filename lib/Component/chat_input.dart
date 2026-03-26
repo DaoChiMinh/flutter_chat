@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_chat/Module/chatData.dart';
+import 'package:flutter_chat/Module/chatobj.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
@@ -40,8 +42,8 @@ class ChatInputState {
 // ============================================================
 
 class ChatInput extends StatefulWidget {
-  const ChatInput({super.key});
-
+  const ChatInput({super.key, required this.msgs});
+  final List<Chatmsgobject> msgs;
   @override
   State<ChatInput> createState() => _ChatInputState();
 }
@@ -109,7 +111,18 @@ class _ChatInputState extends State<ChatInput> {
     }
   }
 
-  void _onSendPressed() {}
+  void _onSendPressed() {
+    setState(() {
+      widget.msgs.add(
+        Chatmsgobject()
+          ..Comment = "minhdc"
+          ..isMe = true
+          ..Note = _textController.text,
+      );
+    });
+    _textController.text = "";
+    _focusNode.unfocus();
+  }
 
   // ----------------------------------------------------------
   // Data

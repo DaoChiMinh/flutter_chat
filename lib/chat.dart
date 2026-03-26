@@ -28,8 +28,8 @@ class _ChatpageState extends State<Chatpage> {
           // padding: EdgeInsets.symmetric(vertical: 20),
           child: Column(
             children: [
-              Expanded(child: ChatMessage(msgs: Chatmsgobjects,)),
-              ChatInput(),
+              Expanded(child: ChatMessage(msgs: Chatmsgobjects)),
+              ChatInput(msgs: Chatmsgobjects),
             ],
           ),
         ),
