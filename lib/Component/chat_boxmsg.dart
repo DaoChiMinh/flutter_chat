@@ -24,33 +24,6 @@ class _ChatMessageState extends State<ChatMessage> {
   final ScrollController scrollController = ScrollController();
 
   @override
-  void initState() {
-    super.initState();
-    _scrollToBottom();
-  
-  }
-
-  @override
-  void didUpdateWidget(covariant ChatMessage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.msgs.length != oldWidget.msgs.length) {
-      _scrollToBottom();
-    }
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!scrollController.hasClients) return;
-
-      scrollController.animateTo(
-        scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 2000),
-        curve: Curves.easeOut,
-      );
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     if (widget.msgs.isEmpty) {
       return const Center(
@@ -61,12 +34,15 @@ class _ChatMessageState extends State<ChatMessage> {
       );
     }
 
+    final reversedMsgs = widget.msgs.reversed.toList();
+
     return ListView.builder(
       controller: scrollController,
+      reverse: true,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      itemCount: widget.msgs.length,
+      itemCount: reversedMsgs.length,
       itemBuilder: (context, index) {
-        final msg = widget.msgs[index];
+        final msg = reversedMsgs[index];
         return _MessageBubble(msg: msg);
       },
     );
