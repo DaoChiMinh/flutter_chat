@@ -19,6 +19,14 @@ class _ChatpageState extends State<Chatpage> {
     List.from(Chatmsgobjects),
   );
 
+  void CloseAll() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() {
+      _showEmoji = false;
+      _showGallery = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -34,13 +42,7 @@ class _ChatpageState extends State<Chatpage> {
           children: [
             Expanded(
               child: GestureDetector(
-                onTap: () {
-                  FocusManager.instance.primaryFocus?.unfocus();
-                  setState(() {
-                    _showEmoji = false;
-                    _showGallery = false;
-                  });
-                },
+                onTap: CloseAll,
                 behavior: HitTestBehavior.translucent,
                 child: ValueListenableBuilder<List<Chatmsgobject>>(
                   valueListenable: _msgsNotifier,
@@ -57,11 +59,7 @@ class _ChatpageState extends State<Chatpage> {
               onShowGalleryChanged: (v) => setState(() => _showGallery = v),
               onSend: (msg) {
                 _msgsNotifier.value = [..._msgsNotifier.value, msg];
-                FocusManager.instance.primaryFocus?.unfocus();
-                setState(() {
-                  _showEmoji = false;
-                  _showGallery = false;
-                });
+                CloseAll();
               },
             ),
           ],
