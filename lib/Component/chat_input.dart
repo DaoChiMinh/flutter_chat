@@ -11,30 +11,22 @@ import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 
 class ChatInputState {
   final bool isEditing;
-  final bool isShowingGallery;
-  final bool isShowingEmoji;
   final List<AssetEntity> assets;
   final List<AssetEntity> selectedAssets;
 
   const ChatInputState({
     this.isEditing = false,
-    this.isShowingGallery = false,
-    this.isShowingEmoji = false,
     this.assets = const [],
     this.selectedAssets = const [],
   });
 
   ChatInputState copyWith({
     bool? isEditing,
-    bool? isShowingGallery,
-    bool? isShowingEmoji,
     List<AssetEntity>? assets,
     List<AssetEntity>? selectedAssets,
   }) {
     return ChatInputState(
       isEditing: isEditing ?? this.isEditing,
-      isShowingGallery: isShowingGallery ?? this.isShowingGallery,
-      isShowingEmoji: isShowingEmoji ?? this.isShowingEmoji,
       assets: assets ?? this.assets,
       selectedAssets: selectedAssets ?? this.selectedAssets,
     );
@@ -46,8 +38,21 @@ class ChatInputState {
 // ============================================================
 
 class ChatInput extends StatefulWidget {
-  const ChatInput({super.key, required this.onSend});
+  const ChatInput({
+    super.key,
+    required this.onSend,
+    required this.showEmoji,
+    required this.showGallery,
+    required this.onShowEmojiChanged,
+    required this.onShowGalleryChanged,
+  });
+
   final ValueChanged<Chatmsgobject> onSend;
+  final bool showEmoji;
+  final bool showGallery;
+  final ValueChanged<bool> onShowEmojiChanged;
+  final ValueChanged<bool> onShowGalleryChanged;
+
   @override
   State<ChatInput> createState() => _ChatInputState();
 }
@@ -73,20 +78,19 @@ class _ChatInputState extends State<ChatInput> {
   // ----------------------------------------------------------
 
   void _onTextChanged(String value) {
-    setState(() {
-      _state = _state.copyWith(isEditing: value.isNotEmpty);
-    });
+    setState(() => _state = _state.copyWith(isEditing: value.isNotEmpty));
+  }
+
+  void _onTextFieldTapped() {
+    widget.onShowEmojiChanged(false);
+    widget.onShowGalleryChanged(false);
   }
 
   void _onEmojiToggled() {
-    final willShow = !_state.isShowingEmoji;
-    setState(() {
-      _state = _state.copyWith(
-        isShowingEmoji: willShow,
-        isShowingGallery: false, // ẩn gallery nếu đang mở
-      );
-      if (willShow) _focusNode.unfocus();
-    });
+    final willShow = !widget.showEmoji;
+    widget.onShowEmojiChanged(willShow);
+    widget.onShowGalleryChanged(false);
+    if (willShow) _focusNode.unfocus();
   }
 
   void _onEmojiSelected(String emoji) {
@@ -101,29 +105,15 @@ class _ChatInputState extends State<ChatInput> {
         offset: sel.isValid ? sel.start + emoji.length : newText.length,
       ),
     );
-    setState(() {
-      _state = _state.copyWith(isEditing: newText.isNotEmpty);
-    });
-  }
-
-  void _onTextFieldTapped() {
-    setState(() {
-      _state = _state.copyWith(isShowingGallery: false, isShowingEmoji: false);
-    });
+    setState(() => _state = _state.copyWith(isEditing: newText.isNotEmpty));
   }
 
   Future<void> _onGalleryToggled() async {
-    final willShow = !_state.isShowingGallery;
-    if (willShow && _state.assets.isEmpty) {
-      await _loadPhotos();
-    }
-    setState(() {
-      _state = _state.copyWith(
-        isShowingGallery: willShow,
-        isShowingEmoji: false,
-      );
-      if (willShow) _focusNode.unfocus();
-    });
+    final willShow = !widget.showGallery;
+    if (willShow && _state.assets.isEmpty) await _loadPhotos();
+    widget.onShowGalleryChanged(willShow);
+    widget.onShowEmojiChanged(false);
+    if (willShow) _focusNode.unfocus();
   }
 
   void _onAssetToggled(AssetEntity asset) {
@@ -133,65 +123,53 @@ class _ChatInputState extends State<ChatInput> {
     } else {
       selected.add(asset);
     }
-
-    setState(() {
-      _state = _state.copyWith(selectedAssets: selected);
-    });
+    setState(() => _state = _state.copyWith(selectedAssets: selected));
   }
 
   Future<void> _onCameraPressed() async {
     final photo = await ImagePicker().pickImage(source: ImageSource.camera);
-    if (photo != null) {
-      await _loadPhotos();
-    }
+    if (photo != null) await _loadPhotos();
   }
 
   void _onSendPressed() {
+    final text = _textController.text.trim();
+    if (text.isEmpty) return;
+
     widget.onSend(
       Chatmsgobject()
         ..Comment = "minhdc"
         ..isMe = true
-        ..Note = _textController.text
+        ..Note = text
         ..Send_Date = DateTime.now(),
     );
 
     _textController.clear();
     _focusNode.unfocus();
-    setState(() {
-      _state = _state.copyWith(
-        isEditing: false,
-        isShowingEmoji: false,
-        isShowingGallery: false,
-      );
-    });
+    setState(() => _state = _state.copyWith(isEditing: false));
   }
 
   Future<void> _onSendImages() async {
     if (_state.selectedAssets.isEmpty) return;
-    List<String> _file = [];
 
     for (final asset in _state.selectedAssets) {
-      final file = await asset.file; // ← lấy path thực từ device
+      final file = await asset.file;
       if (file == null) continue;
-      _file.add(file.path);
-    }
-    widget.onSend(
-      Chatmsgobject()
-        ..Comment = "minhdc"
-        ..isMe = true
-        ..Send_Date = DateTime.now()
-        ..strDataFile = _file
-        ..strTypeFile = 'jpg'
-        ..Note = '',
-    );
-    setState(() {
-      _state = _state.copyWith(
-        selectedAssets: [],
-        isShowingGallery: false,
-        isShowingEmoji: false,
+
+      widget.onSend(
+        Chatmsgobject()
+          ..Comment = "minhdc"
+          ..isMe = true
+          ..Send_Date = DateTime.now()
+          ..strDataFile = [file.path]
+          ..strTypeFile = asset.mimeType?.split('/').last ?? 'jpg'
+          ..Note = '',
       );
-    });
+    }
+
+    widget.onShowGalleryChanged(false);
+    setState(() => _state = _state.copyWith(selectedAssets: []));
   }
+
   // ----------------------------------------------------------
   // Data
   // ----------------------------------------------------------
@@ -207,9 +185,7 @@ class _ChatInputState extends State<ChatInput> {
     if (albums.isEmpty) return;
 
     final assets = await albums.first.getAssetListPaged(page: 0, size: 80);
-    setState(() {
-      _state = _state.copyWith(assets: assets);
-    });
+    setState(() => _state = _state.copyWith(assets: assets));
   }
 
   // ----------------------------------------------------------
@@ -218,6 +194,8 @@ class _ChatInputState extends State<ChatInput> {
 
   @override
   Widget build(BuildContext context) {
+    final showGallery = widget.showGallery && !_state.isEditing;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 26),
       decoration: BoxDecoration(
@@ -239,22 +217,19 @@ class _ChatInputState extends State<ChatInput> {
             textController: _textController,
             focusNode: _focusNode,
             isEditing: _state.isEditing,
-            isShowingEmoji: _state.isShowingEmoji,
+            isShowingEmoji: widget.showEmoji,
             onTextChanged: _onTextChanged,
             onTap: _onTextFieldTapped,
             onEmojiPressed: _onEmojiToggled,
             onGalleryPressed: _onGalleryToggled,
             onSendPressed: _onSendPressed,
           ),
-          // Emoji panel
-          if (_state.isShowingEmoji && !_state.isEditing == false ||
-              _state.isShowingEmoji)
+          if (widget.showEmoji)
             SizedBox(
               height: 300,
               child: ChatEmojiPanel(onEmojiSelected: _onEmojiSelected),
             ),
-
-          if (_state.isShowingGallery && !_state.isEditing)
+          if (showGallery)
             _GalleryGrid(
               assets: _state.assets,
               selectedAssets: _state.selectedAssets,
@@ -268,6 +243,10 @@ class _ChatInputState extends State<ChatInput> {
   }
 }
 
+// ============================================================
+// SUB WIDGETS
+// ============================================================
+
 class _InputRow extends StatelessWidget {
   final TextEditingController textController;
   final FocusNode focusNode;
@@ -275,9 +254,10 @@ class _InputRow extends StatelessWidget {
   final bool isShowingEmoji;
   final ValueChanged<String> onTextChanged;
   final VoidCallback onTap;
+  final VoidCallback onEmojiPressed;
   final VoidCallback onGalleryPressed;
   final VoidCallback onSendPressed;
-  final VoidCallback onEmojiPressed;
+
   const _InputRow({
     required this.textController,
     required this.focusNode,
@@ -297,7 +277,9 @@ class _InputRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         _IconBtn(
-          icon: Icons.emoji_emotions_outlined,
+          icon: isShowingEmoji
+              ? Icons.keyboard_alt_outlined
+              : Icons.emoji_emotions_outlined,
           onPressed: onEmojiPressed,
         ),
         Expanded(
@@ -333,12 +315,15 @@ class _InputRow extends StatelessWidget {
   }
 }
 
+// ----------------------------------------------------------
+
 class _GalleryGrid extends StatelessWidget {
   final List<AssetEntity> assets;
   final List<AssetEntity> selectedAssets;
   final ValueChanged<AssetEntity> onAssetToggled;
   final VoidCallback onCameraPressed;
-  final VoidCallback onConfirm;
+  final Future<void> Function() onConfirm;
+
   const _GalleryGrid({
     required this.assets,
     required this.selectedAssets,
@@ -356,6 +341,9 @@ class _GalleryGrid extends StatelessWidget {
         children: [
           Positioned.fill(
             child: GridView.builder(
+              padding: selectedAssets.isNotEmpty
+                  ? const EdgeInsets.only(bottom: 60)
+                  : EdgeInsets.zero,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
                 crossAxisSpacing: 2,
@@ -377,23 +365,23 @@ class _GalleryGrid extends StatelessWidget {
               },
             ),
           ),
-          if (selectedAssets.isNotEmpty) ...[
+          if (selectedAssets.isNotEmpty)
             Positioned(
-              right: 6,
-              bottom: 20,
               left: 6,
+              right: 6,
+              bottom: 8,
               child: FilledButton(
                 onPressed: onConfirm,
-                style: ButtonStyle(),
-                child: Text("Xác nhận"),
+                child: Text('Gửi ${selectedAssets.length} ảnh'),
               ),
             ),
-          ],
         ],
       ),
     );
   }
 }
+
+// ----------------------------------------------------------
 
 class _CameraCell extends StatelessWidget {
   final VoidCallback onPressed;
@@ -426,9 +414,11 @@ class _CameraCell extends StatelessWidget {
   }
 }
 
+// ----------------------------------------------------------
+
 class _AssetCell extends StatelessWidget {
   final AssetEntity asset;
-  final int? selectedIndex; // null = chưa chọn, số = thứ tự chọn
+  final int? selectedIndex;
   final VoidCallback onTap;
 
   const _AssetCell({
@@ -453,14 +443,10 @@ class _AssetCell extends StatelessWidget {
               fit: BoxFit.cover,
             ),
           ),
-
-          // Overlay tối khi được chọn
           if (isSelected)
             Positioned.fill(
-              child: Container(color: Colors.black.withOpacity(0.5)),
+              child: ColoredBox(color: Colors.black.withOpacity(0.5)),
             ),
-
-          // Badge số thứ tự
           Positioned(
             right: 6,
             top: 6,
@@ -471,6 +457,8 @@ class _AssetCell extends StatelessWidget {
     );
   }
 }
+
+// ----------------------------------------------------------
 
 class _SelectBadge extends StatelessWidget {
   final int? index;
@@ -503,6 +491,8 @@ class _SelectBadge extends StatelessWidget {
     );
   }
 }
+
+// ----------------------------------------------------------
 
 class _IconBtn extends StatelessWidget {
   final IconData icon;
