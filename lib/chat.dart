@@ -56,6 +56,11 @@ class _ChatpageState extends State<Chatpage> {
                 onShowGalleryChanged: (v) => setState(() => _showGallery = v),
                 onSend: (msg) {
                   _msgsNotifier.value = [..._msgsNotifier.value, msg];
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  setState(() {
+                    _showEmoji = false;
+                    _showGallery = false;
+                  });
                 },
               ),
             ],
