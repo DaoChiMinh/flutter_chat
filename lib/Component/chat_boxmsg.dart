@@ -11,14 +11,48 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-class ChatMessage extends StatelessWidget {
+class ChatMessage extends StatefulWidget {
   final List<Chatmsgobject> msgs;
 
   const ChatMessage({super.key, required this.msgs});
 
   @override
+  State<ChatMessage> createState() => _ChatMessageState();
+}
+
+class _ChatMessageState extends State<ChatMessage> {
+  final ScrollController scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollToBottom();
+  
+  }
+
+  @override
+  void didUpdateWidget(covariant ChatMessage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.msgs.length != oldWidget.msgs.length) {
+      _scrollToBottom();
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!scrollController.hasClients) return;
+
+      scrollController.animateTo(
+        scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 2000),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (msgs.isEmpty) {
+    if (widget.msgs.isEmpty) {
       return const Center(
         child: Text(
           "Hãy khởi đầu cuộc trò chuyện bằng một tin nhắn 😀",
@@ -28,10 +62,11 @@ class ChatMessage extends StatelessWidget {
     }
 
     return ListView.builder(
+      controller: scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      itemCount: msgs.length,
+      itemCount: widget.msgs.length,
       itemBuilder: (context, index) {
-        final msg = msgs[index];
+        final msg = widget.msgs[index];
         return _MessageBubble(msg: msg);
       },
     );
@@ -40,7 +75,6 @@ class ChatMessage extends StatelessWidget {
 
 class _MessageBubble extends StatelessWidget {
   final Chatmsgobject msg;
-
   const _MessageBubble({required this.msg});
 
   @override
@@ -105,13 +139,13 @@ class _MessageBubble extends StatelessWidget {
                       // ],
                       if (msg.objtype() == ChatmsgObjtype.video)
                         ChatMessageVideo(
-                          data: msg.strDataFile,
+                          data: msg.file,
                           onTap: () => _openVideo(context),
                         ),
 
                       if (msg.objtype() == ChatmsgObjtype.image)
                         ChatMessageImage(
-                          data: msg.strDataFile,
+                          data: msg.file,
                           onTap: () => _openImage(context),
                         ),
 
@@ -123,9 +157,9 @@ class _MessageBubble extends StatelessWidget {
 
                       if (msg.objtype() == ChatmsgObjtype.url)
                         ChatMessageUrl(
-                          url: msg.strDataFile,
+                          url: msg.file,
                           rawText: msg.Note,
-                          onTap: () => _openLink(context, msg.strDataFile),
+                          onTap: () => _openLink(context, msg.file),
                         ),
 
                       if (msg.Note.trim().isNotEmpty)
@@ -253,7 +287,7 @@ class _MessageBubble extends StatelessWidget {
                   ),
                   onTap: () {
                     Navigator.pop(context);
-                    _openLink(context, msg.strDataFile);
+                    _openLink(context, msg.file);
                   },
                 ),
               if (msg.objtype() == ChatmsgObjtype.image)
@@ -342,7 +376,7 @@ class _MessageBubble extends StatelessWidget {
   }
 
   void _openImage(BuildContext context) {
-    final path = msg.strDataFile.trim();
+    final path = msg.file.trim();
     if (path.isEmpty) {
       _showSnackBar(context, "Không có dữ liệu hình ảnh");
       return;
@@ -354,7 +388,7 @@ class _MessageBubble extends StatelessWidget {
   }
 
   void _openVideo(BuildContext context) {
-    final path = msg.strDataFile.trim();
+    final path = msg.strDataFile.first;
     if (path.isEmpty) {
       _showSnackBar(context, "Không có dữ liệu video");
       return;
@@ -366,7 +400,7 @@ class _MessageBubble extends StatelessWidget {
   }
 
   void _openFile(BuildContext context) {
-    final path = msg.strDataFile.trim();
+    final path = msg.file.trim();
     if (path.isEmpty) {
       _showSnackBar(context, "Không có dữ liệu tệp");
       return;
@@ -658,6 +692,7 @@ class ChatMessageImage extends StatelessWidget {
       child = Image.network(
         data,
         fit: BoxFit.cover,
+        height: 200,
         errorBuilder: (_, __, ___) => _buildError(),
       );
     } else if (File(data).existsSync()) {
