@@ -108,6 +108,18 @@ class _ChatInputState extends State<ChatInput> {
     setState(() => _state = _state.copyWith(isEditing: newText.isNotEmpty));
   }
 
+  void _onStickerSelected(Sticker _sticker) {
+    widget.onSend(
+      Chatmsgobject()
+        ..Comment = "minhdc"
+        ..isMe = true
+        ..Send_Date = DateTime.now()
+        ..strDataFile = [_sticker.url]
+        ..strTypeFile = 'gif'
+        ..Note = '',
+    );
+  }
+
   Future<void> _onGalleryToggled() async {
     final willShow = !widget.showGallery;
     if (willShow && _state.assets.isEmpty) await _loadPhotos();
@@ -227,7 +239,10 @@ class _ChatInputState extends State<ChatInput> {
           if (widget.showEmoji)
             SizedBox(
               height: 300,
-              child: ChatEmojiPanel(onEmojiSelected: _onEmojiSelected),
+              child: ChatEmojiPanel(
+                onEmojiSelected: _onEmojiSelected,
+                onStickerSelected: _onStickerSelected,
+              ),
             ),
           if (showGallery)
             _GalleryGrid(
