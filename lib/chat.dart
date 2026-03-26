@@ -27,21 +27,21 @@ class _ChatpageState extends State<Chatpage> {
         title: Text("Chat", style: TextStyle(color: Colors.white)),
       ),
       resizeToAvoidBottomInset: true,
-      body: GestureDetector(
-        onTap: () {
-          FocusManager.instance.primaryFocus?.unfocus();
-          setState(() {
-            _showEmoji = false;
-            _showGallery = false;
-          });
-        },
-        behavior: HitTestBehavior.translucent,
-        child: Container(
-          color: const Color(0xffE4E8F3),
-          // padding: EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            children: [
-              Expanded(
+      body: Container(
+        color: const Color(0xffE4E8F3),
+        // padding: EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  setState(() {
+                    _showEmoji = false;
+                    _showGallery = false;
+                  });
+                },
+                behavior: HitTestBehavior.translucent,
                 child: ValueListenableBuilder<List<Chatmsgobject>>(
                   valueListenable: _msgsNotifier,
                   builder: (context, msgs, _) {
@@ -49,22 +49,22 @@ class _ChatpageState extends State<Chatpage> {
                   },
                 ),
               ),
-              ChatInput(
-                showEmoji: _showEmoji,
-                showGallery: _showGallery,
-                onShowEmojiChanged: (v) => setState(() => _showEmoji = v),
-                onShowGalleryChanged: (v) => setState(() => _showGallery = v),
-                onSend: (msg) {
-                  _msgsNotifier.value = [..._msgsNotifier.value, msg];
-                  FocusManager.instance.primaryFocus?.unfocus();
-                  setState(() {
-                    _showEmoji = false;
-                    _showGallery = false;
-                  });
-                },
-              ),
-            ],
-          ),
+            ),
+            ChatInput(
+              showEmoji: _showEmoji,
+              showGallery: _showGallery,
+              onShowEmojiChanged: (v) => setState(() => _showEmoji = v),
+              onShowGalleryChanged: (v) => setState(() => _showGallery = v),
+              onSend: (msg) {
+                _msgsNotifier.value = [..._msgsNotifier.value, msg];
+                FocusManager.instance.primaryFocus?.unfocus();
+                setState(() {
+                  _showEmoji = false;
+                  _showGallery = false;
+                });
+              },
+            ),
+          ],
         ),
       ),
     );
