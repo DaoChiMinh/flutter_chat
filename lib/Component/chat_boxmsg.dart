@@ -34,35 +34,40 @@ class _ChatMessageState extends State<ChatMessage> {
       );
     }
 
-    final reversedMsgs = widget.msgs.reversed.toList();
-
     return ListView.builder(
       controller: scrollController,
       reverse: true,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      itemCount: reversedMsgs.length,
+      itemCount: widget.msgs.length,
       itemBuilder: (context, index) {
-        final msg = reversedMsgs[index];
-        return _MessageBubble(msg: msg);
+        final msg = widget.msgs[widget.msgs.length - 1 - index];
+        return _MessageBubble(key: ValueKey(msg.IdMsg), msg: msg);
       },
     );
   }
 }
 
+// =========================
+// MESSAGE BUBBLE
+// =========================
+
 class _MessageBubble extends StatelessWidget {
   final Chatmsgobject msg;
-  const _MessageBubble({required this.msg});
+
+  const _MessageBubble({super.key, required this.msg});
 
   @override
   Widget build(BuildContext context) {
+    final type = msg.objtype();
+
     final hasMediaOrFileOrLink =
-        msg.objtype() == ChatmsgObjtype.image ||
-        msg.objtype() == ChatmsgObjtype.video ||
-        msg.objtype() == ChatmsgObjtype.pdf ||
-        msg.objtype() == ChatmsgObjtype.doc ||
-        msg.objtype() == ChatmsgObjtype.excel ||
-        msg.objtype() == ChatmsgObjtype.file ||
-        msg.objtype() == ChatmsgObjtype.url;
+        type == ChatmsgObjtype.image ||
+        type == ChatmsgObjtype.video ||
+        type == ChatmsgObjtype.pdf ||
+        type == ChatmsgObjtype.doc ||
+        type == ChatmsgObjtype.excel ||
+        type == ChatmsgObjtype.file ||
+        type == ChatmsgObjtype.url;
 
     return GestureDetector(
       onLongPress: () => _showMessageActions(context),
@@ -88,11 +93,11 @@ class _MessageBubble extends StatelessWidget {
               ),
             ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.72,
+                maxWidth: MediaQuery.of(context).size.width * 0.76,
               ),
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
+                  horizontal: 10,
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
@@ -110,28 +115,27 @@ class _MessageBubble extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // if (msg.replyMsg != null) ...[
-                      //   _ReplyPreview(reply: msg.replyMsg!),
-                      // ],
-                      if (msg.objtype() == ChatmsgObjtype.video)
-                        ChatMessageVideo(
-                          data: msg.file,
-                          onTap: () => _openVideo(context),
+                      if (type == ChatmsgObjtype.image)
+                        ChatMediaGrid(
+                          files: msg.strDataFile,
+                          type: ChatmsgObjtype.image,
+                          onTapItem: (path) => _openImagePath(context, path),
                         ),
 
-                      if (msg.objtype() == ChatmsgObjtype.image)
-                        ChatMessageImage(
-                          data: msg.file,
-                          onTap: () => _openImage(context),
+                      if (type == ChatmsgObjtype.video)
+                        ChatMediaGrid(
+                          files: msg.strDataFile,
+                          type: ChatmsgObjtype.video,
+                          onTapItem: (path) => _openVideoPath(context, path),
                         ),
 
-                      if (_isFileType(msg.objtype()))
+                      if (_isFileType(type))
                         ChatMessageFile(
                           msg: msg,
                           onTap: () => _openFile(context),
                         ),
 
-                      if (msg.objtype() == ChatmsgObjtype.url)
+                      if (type == ChatmsgObjtype.url)
                         ChatMessageUrl(
                           url: msg.file,
                           rawText: msg.Note,
@@ -170,10 +174,6 @@ class _MessageBubble extends StatelessWidget {
                               color: Colors.grey,
                             ),
                           ),
-                          if (msg.isMe) ...[
-                            const SizedBox(width: 6),
-                            // _StatusIcon(status: msg.status),
-                          ],
                         ],
                       ),
                     ],
@@ -203,132 +203,10 @@ class _MessageBubble extends StatelessWidget {
     return "$hh:$mm";
   }
 
-  void _showMessageActions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (_) {
-        return SafeArea(
-          child: Wrap(
-            children: [
-              if (msg.Note.trim().isNotEmpty)
-                ListTile(
-                  leading: const Icon(Icons.reply),
-                  title: const Text(
-                    "Trả lời",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  onTap: () => Navigator.pop(context, "reply"),
-                ),
-              ListTile(
-                leading: const Icon(Icons.copy),
-                title: const Text(
-                  "Sao chép nội dung",
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                iconColor: Colors.blueGrey,
-                onTap: () async {
-                  Navigator.pop(context);
-                  await Clipboard.setData(ClipboardData(text: msg.Note));
-                  _showSnackBar(context, "Đã sao chép nội dung");
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  msg.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                ),
-                title: Text(
-                  msg.isPinned ? "Bỏ ghim" : "Ghim",
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                iconColor: Colors.cyan,
-                onTap: () {
-                  if (msg.isPinned == false) {
-                    _showSnackBar(context, "Đã ghim");
-                    msg.isPinned = true;
-                  } else {
-                    _showSnackBar(context, "Đã bỏ ghim");
-                    msg.isPinned = false;
-                  }
-                  Navigator.pop(context, "pin");
-                },
-              ),
-              if (msg.objtype() == ChatmsgObjtype.url)
-                ListTile(
-                  leading: const Icon(Icons.link),
-                  iconColor: Colors.blue,
-                  title: const Text(
-                    "Mở liên kết",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _openLink(context, msg.file);
-                  },
-                ),
-              if (msg.objtype() == ChatmsgObjtype.image)
-                ListTile(
-                  leading: const Icon(Icons.image_outlined),
-                  iconColor: Colors.blue,
-                  title: const Text(
-                    "Xem ảnh",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _openImage(context);
-                  },
-                ),
-              if (msg.objtype() == ChatmsgObjtype.video)
-                ListTile(
-                  leading: const Icon(Icons.play_circle_outline),
-                  iconColor: Colors.blue,
-                  title: const Text(
-                    "Xem video",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _openVideo(context);
-                  },
-                ),
-              if (_isFileType(msg.objtype()))
-                ListTile(
-                  leading: const Icon(Icons.attach_file),
-                  iconColor: Colors.blue,
-                  title: const Text(
-                    "Mở tệp",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _openFile(context);
-                  },
-                ),
-              if (msg.isMe && !msg.isRecalled)
-                ListTile(
-                  leading: const Icon(Icons.undo),
-                  iconColor: Colors.orange,
-                  title: const Text(
-                    "Thu hồi",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  onTap: () => Navigator.pop(context, "recall"),
-                ),
-              if (msg.isMe && !msg.isRecalled)
-                ListTile(
-                  leading: const Icon(Icons.delete_outline, color: Colors.red),
-                  title: const Text(
-                    "Xóa",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  onTap: () => Navigator.pop(context, "delete"),
-                ),
-            ],
-          ),
-        );
-      },
-    );
+  void _showSnackBar(BuildContext context, String text) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text)));
   }
 
   Future<void> _openLink(BuildContext context, String url) async {
@@ -337,38 +215,27 @@ class _MessageBubble extends StatelessWidget {
       _showSnackBar(context, "Liên kết trống");
       return;
     }
+
     final fixedUrl = raw.startsWith("http://") || raw.startsWith("https://")
         ? raw
         : "https://$raw";
-    final uri = Uri.tryParse(fixedUrl);
-    if (uri == null) {
-      _showSnackBar(context, "Liên kết không hợp lệ");
-      return;
-    }
+
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => ChatWebViewerPage(url: fixedUrl)),
     );
   }
 
-  void _openImage(BuildContext context) {
-    final path = msg.file.trim();
-    if (path.isEmpty) {
-      _showSnackBar(context, "Không có dữ liệu hình ảnh");
-      return;
-    }
+  void _openImagePath(BuildContext context, String path) {
+    if (path.trim().isEmpty) return;
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => ChatImageViewerPage(path: path)),
     );
   }
 
-  void _openVideo(BuildContext context) {
-    final path = msg.strDataFile.first;
-    if (path.isEmpty) {
-      _showSnackBar(context, "Không có dữ liệu video");
-      return;
-    }
+  void _openVideoPath(BuildContext context, String path) {
+    if (path.trim().isEmpty) return;
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => ChatVideoViewerPage(path: path)),
@@ -377,12 +244,11 @@ class _MessageBubble extends StatelessWidget {
 
   void _openFile(BuildContext context) {
     final path = msg.file.trim();
-    if (path.isEmpty) {
-      _showSnackBar(context, "Không có dữ liệu tệp");
-      return;
-    }
+    if (path.isEmpty) return;
+
     final type = msg.strTypeFile.trim().toLowerCase();
     Widget page;
+
     switch (type) {
       case "pdf":
         page = ChatPdfViewerPage(path: path);
@@ -429,10 +295,407 @@ class _MessageBubble extends StatelessWidget {
     }
   }
 
-  void _showSnackBar(BuildContext context, String text) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(text)));
+  void _showMessageActions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (_) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              if (msg.Note.trim().isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.reply),
+                  title: const Text(
+                    "Trả lời",
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  onTap: () => Navigator.pop(context, "reply"),
+                ),
+              ListTile(
+                leading: const Icon(Icons.copy),
+                title: const Text(
+                  "Sao chép nội dung",
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                iconColor: Colors.blueGrey,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await Clipboard.setData(ClipboardData(text: msg.Note));
+                  _showSnackBar(context, "Đã sao chép nội dung");
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  msg.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                ),
+                title: Text(
+                  msg.isPinned ? "Bỏ ghim" : "Ghim",
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+                iconColor: Colors.cyan,
+                onTap: () {
+                  msg.isPinned = !msg.isPinned;
+                  _showSnackBar(
+                    context,
+                    msg.isPinned ? "Đã ghim" : "Đã bỏ ghim",
+                  );
+                  Navigator.pop(context, "pin");
+                },
+              ),
+              if (msg.objtype() == ChatmsgObjtype.url)
+                ListTile(
+                  leading: const Icon(Icons.link),
+                  iconColor: Colors.blue,
+                  title: const Text(
+                    "Mở liên kết",
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openLink(context, msg.file);
+                  },
+                ),
+              if (msg.objtype() == ChatmsgObjtype.image)
+                ListTile(
+                  leading: const Icon(Icons.image_outlined),
+                  iconColor: Colors.blue,
+                  title: const Text(
+                    "Xem ảnh",
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    final path = msg.strDataFile.isNotEmpty
+                        ? msg.strDataFile.first
+                        : msg.file;
+                    _openImagePath(context, path);
+                  },
+                ),
+              if (msg.objtype() == ChatmsgObjtype.video)
+                ListTile(
+                  leading: const Icon(Icons.play_circle_outline),
+                  iconColor: Colors.blue,
+                  title: const Text(
+                    "Xem video",
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    final path = msg.strDataFile.isNotEmpty
+                        ? msg.strDataFile.first
+                        : msg.file;
+                    _openVideoPath(context, path);
+                  },
+                ),
+              if (_isFileType(msg.objtype()))
+                ListTile(
+                  leading: const Icon(Icons.attach_file),
+                  iconColor: Colors.blue,
+                  title: const Text(
+                    "Mở tệp",
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _openFile(context);
+                  },
+                ),
+              if (msg.isMe && !msg.isRecalled)
+                ListTile(
+                  leading: const Icon(Icons.undo),
+                  iconColor: Colors.orange,
+                  title: const Text(
+                    "Thu hồi",
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  onTap: () => Navigator.pop(context, "recall"),
+                ),
+              if (msg.isMe && !msg.isRecalled)
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: const Text(
+                    "Xóa",
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  onTap: () => Navigator.pop(context, "delete"),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class ChatMediaGrid extends StatelessWidget {
+  final List<String> files;
+  final ChatmsgObjtype type;
+  final ValueChanged<String> onTapItem;
+
+  const ChatMediaGrid({
+    super.key,
+    required this.files,
+    required this.type,
+    required this.onTapItem,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (files.isEmpty) return const SizedBox.shrink();
+
+    final count = files.length;
+    final maxWidth = MediaQuery.of(context).size.width * 0.68;
+    const spacing = 4.0;
+
+    if (count == 1) {
+      return _item(files[0], maxWidth, maxWidth * 0.78);
+    }
+
+    if (count == 2) {
+      final size = (maxWidth - spacing) / 2;
+      return Row(
+        children: [
+          _item(files[0], size, size),
+          const SizedBox(width: spacing),
+          _item(files[1], size, size),
+        ],
+      );
+    }
+
+    if (count == 3) {
+      final size = (maxWidth - spacing * 2) / 3;
+      return Row(
+        children: [
+          _item(files[0], size, size),
+          const SizedBox(width: spacing),
+          _item(files[1], size, size),
+          const SizedBox(width: spacing),
+          _item(files[2], size, size),
+        ],
+      );
+    }
+
+    if (count == 4) {
+      final size = (maxWidth - spacing) / 2;
+      return Column(
+        children: [
+          Row(
+            children: [
+              _item(files[0], size, size),
+              const SizedBox(width: spacing),
+              _item(files[1], size, size),
+            ],
+          ),
+          const SizedBox(height: spacing),
+          Row(
+            children: [
+              _item(files[2], size, size),
+              const SizedBox(width: spacing),
+              _item(files[3], size, size),
+            ],
+          ),
+        ],
+      );
+    }
+
+    final size = (maxWidth - spacing * 2) / 3;
+    final rows = <List<String>>[];
+    for (int i = 0; i < files.length; i += 3) {
+      rows.add(files.sublist(i, (i + 3 > files.length) ? files.length : i + 3));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: List.generate(rows.length, (rowIndex) {
+        final row = rows[rowIndex];
+        return Padding(
+          padding: EdgeInsets.only(bottom: rowIndex == rows.length - 1 ? 0 : spacing),
+          child: Row(
+            children: List.generate(row.length, (index) {
+              return Padding(
+                padding: EdgeInsets.only(right: index == row.length - 1 ? 0 : spacing),
+                child: _item(row[index], size, size),
+              );
+            }),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _item(String path, double w, double h) {
+    return GestureDetector(
+      onTap: () => onTapItem(path),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: SizedBox(
+          width: w,
+          height: h,
+          child: type == ChatmsgObjtype.video
+              ? _buildVideoThumb()
+              : _buildImage(path),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImage(String path) {
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return Image.network(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _fallback(),
+      );
+    }
+
+    if (File(path).existsSync()) {
+      return Image.file(
+        File(path),
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _fallback(),
+      );
+    }
+
+    final bytes = _decodeBase64(path);
+    if (bytes != null) {
+      return Image.memory(
+        bytes,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _fallback(),
+      );
+    }
+
+    return _fallback();
+  }
+
+  Uint8List? _decodeBase64(String value) {
+    try {
+      final raw = value.contains(',') ? value.split(',').last : value;
+      return base64Decode(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Widget _buildVideoThumb() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Container(
+          color: const Color(0xFFE8ECEF),
+          alignment: Alignment.center,
+          child: const Icon(Icons.videocam, color: Colors.grey, size: 30),
+        ),
+        Container(
+          color: Colors.black26,
+          alignment: Alignment.center,
+          child: const Icon(
+            Icons.play_circle_fill,
+            color: Colors.white,
+            size: 34,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _fallback() {
+    return Container(
+      color: const Color(0xFFF1F3F5),
+      alignment: Alignment.center,
+      child: const Icon(Icons.broken_image, color: Colors.grey),
+    );
+  }
+}
+
+class _MediaGridItem extends StatelessWidget {
+  final String path;
+  final ChatmsgObjtype type;
+  final VoidCallback onTap;
+
+  const _MediaGridItem({
+    required this.path,
+    required this.type,
+    required this.onTap,
+  });
+
+  bool get _isNetwork =>
+      path.startsWith("http://") ||
+      path.startsWith("https://") ||
+      path.startsWith("ftp://");
+
+  @override
+  Widget build(BuildContext context) {
+    if (type == ChatmsgObjtype.image) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: _buildImage(),
+        ),
+      );
+    }
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _buildVideoThumb(),
+            Container(
+              color: Colors.black26,
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.play_circle_fill,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImage() {
+    if (_isNetwork) {
+      return Image.network(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _fallback(Icons.broken_image),
+      );
+    }
+
+    if (File(path).existsSync()) {
+      return Image.file(
+        File(path),
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _fallback(Icons.broken_image),
+      );
+    }
+
+    return _fallback(Icons.broken_image);
+  }
+
+  Widget _buildVideoThumb() {
+    return Container(
+      color: const Color(0xFFF5F5F5),
+      alignment: Alignment.center,
+      child: const Icon(Icons.videocam, color: Colors.grey, size: 30),
+    );
+  }
+
+  Widget _fallback(IconData icon) {
+    return Container(
+      color: const Color(0xFFF5F5F5),
+      alignment: Alignment.center,
+      child: Icon(icon, color: Colors.grey),
+    );
   }
 }
 
@@ -669,13 +932,13 @@ class ChatMessageImage extends StatelessWidget {
         data,
         fit: BoxFit.cover,
         height: 200,
-        errorBuilder: (_, __, ___) => _buildError(),
+        errorBuilder: (_, _, _) => _buildError(),
       );
     } else if (File(data).existsSync()) {
       child = Image.file(
         File(data),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildError(),
+        errorBuilder: (_, _, _) => _buildError(),
       );
     } else if (_isBase64) {
       final bytes = _decodeBase64(data);
@@ -684,7 +947,7 @@ class ChatMessageImage extends StatelessWidget {
           : Image.memory(
               bytes,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _buildError(),
+              errorBuilder: (_, _, _) => _buildError(),
             );
     } else {
       child = _buildError();
@@ -811,7 +1074,6 @@ class ChatMessageFile extends StatelessWidget {
         iconColor = Colors.orange;
         break;
     }
-
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
@@ -854,172 +1116,40 @@ class ChatMessageFile extends StatelessWidget {
   }
 }
 
-class ChatMessageVideo extends StatefulWidget {
+class ChatMessageVideo extends StatelessWidget {
   final String data;
   final VoidCallback onTap;
+  final String durationText;
+  final ImageProvider? thumbnail;
 
-  const ChatMessageVideo({super.key, required this.data, required this.onTap});
-
-  @override
-  State<ChatMessageVideo> createState() => _ChatMessageVideoState();
-}
-
-class _ChatMessageVideoState extends State<ChatMessageVideo> {
-  VideoPlayerController? _controller;
-  bool _ready = false;
-  bool _hasError = false;
-  String _durationText = "00:00";
-
-  bool get _isNetwork {
-    final value = widget.data.trim();
-    return value.startsWith("http://") || value.startsWith("https://");
-  }
-
-  bool get _isBase64 {
-    final value = widget.data.trim();
-    if (value.isEmpty) return false;
-    if (_isNetwork) return false;
-    if (value.startsWith("data:video/")) return true;
-    if (value.length < 100) return false;
-    return RegExp(r'^[A-Za-z0-9+/=\r\n]+$').hasMatch(value);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _initVideo();
-  }
-
-  @override
-  void didUpdateWidget(covariant ChatMessageVideo oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.data != widget.data) {
-      _disposeController();
-      _ready = false;
-      _hasError = false;
-      _durationText = "00:00";
-      _initVideo();
-    }
-  }
-
-  Future<void> _initVideo() async {
-    try {
-      final source = widget.data.trim();
-
-      if (source.isEmpty) {
-        throw Exception("Video source is empty");
-      }
-
-      if (_isNetwork) {
-        _controller = VideoPlayerController.networkUrl(Uri.parse(source));
-      } else if (_isBase64) {
-        final file = await _writeTempVideo(source);
-        _controller = VideoPlayerController.file(file);
-      } else {
-        final file = File(source);
-        _controller = VideoPlayerController.file(file);
-      }
-
-      await _controller!.initialize();
-      await _controller!.pause();
-
-      final duration = _controller!.value.duration;
-      _durationText = _format(duration);
-
-      if (!mounted) return;
-      setState(() {
-        _ready = true;
-        _hasError = false;
-      });
-    } catch (_) {
-      _disposeController();
-      if (!mounted) return;
-      setState(() {
-        _ready = false;
-        _hasError = true;
-        _durationText = "00:00";
-      });
-    }
-  }
-
-  Future<File> _writeTempVideo(String base64Value) async {
-    final raw = base64Value.contains(',')
-        ? base64Value.substring(base64Value.indexOf(',') + 1)
-        : base64Value;
-
-    final normalized = raw.replaceAll('\n', '').replaceAll('\r', '');
-    final hash = normalized.hashCode;
-    final file = File('${Directory.systemTemp.path}/chat_video_$hash.mp4');
-
-    if (await file.exists()) {
-      return file;
-    }
-
-    final bytes = base64Decode(normalized);
-    await file.writeAsBytes(bytes, flush: true);
-    return file;
-  }
-
-  String _format(Duration d) {
-    final hh = d.inHours;
-    final mm = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final ss = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return hh > 0 ? '$hh:$mm:$ss' : '$mm:$ss';
-  }
-
-  void _disposeController() {
-    _controller?.dispose();
-    _controller = null;
-  }
-
-  @override
-  void dispose() {
-    _disposeController();
-    super.dispose();
-  }
+  const ChatMessageVideo({
+    super.key,
+    required this.data,
+    required this.onTap,
+    this.durationText = "Video",
+    this.thumbnail,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final controller = _controller;
-
     return InkWell(
-      onTap: widget.onTap,
+      onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(10),
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Container(
-              color: Colors.black12,
+            SizedBox(
               width: double.infinity,
               height: 220,
-              child: _hasError
-                  ? Container(
-                      alignment: Alignment.center,
-                      color: const Color(0xFFF5F5F5),
-                      child: const Icon(
-                        Icons.broken_image,
-                        color: Colors.grey,
-                        size: 36,
-                      ),
-                    )
-                  : (!_ready || controller == null)
-                  ? const Center(
-                      child: SizedBox(
-                        width: 26,
-                        height: 26,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  : FittedBox(
+              child: thumbnail != null
+                  ? Image(
+                      image: thumbnail!,
                       fit: BoxFit.cover,
-                      child: SizedBox(
-                        width: controller.value.size.width,
-                        height: controller.value.size.height,
-                        child: VideoPlayer(controller),
-                      ),
-                    ),
+                      errorBuilder: (_, _, _) => _fallback(),
+                    )
+                  : _fallback(),
             ),
             Container(
               width: 56,
@@ -1044,7 +1174,7 @@ class _ChatMessageVideoState extends State<ChatMessageVideo> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  _durationText,
+                  durationText,
                   style: const TextStyle(color: Colors.white, fontSize: 11),
                 ),
               ),
@@ -1052,6 +1182,14 @@ class _ChatMessageVideoState extends State<ChatMessageVideo> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _fallback() {
+    return Container(
+      color: const Color(0xFFF5F5F5),
+      alignment: Alignment.center,
+      child: const Icon(Icons.videocam, color: Colors.grey, size: 36),
     );
   }
 }
@@ -1112,7 +1250,6 @@ class _ChatVideoViewerPageState extends State<ChatVideoViewerPage> {
       await _controller!.initialize();
       _controller!.addListener(_onTick);
 
-      if (!mounted) return;
       setState(() {
         _ready = true;
         _hasError = false;
@@ -1120,7 +1257,6 @@ class _ChatVideoViewerPageState extends State<ChatVideoViewerPage> {
 
       _startAutoHide();
     } catch (_) {
-      if (!mounted) return;
       setState(() {
         _ready = false;
         _hasError = true;

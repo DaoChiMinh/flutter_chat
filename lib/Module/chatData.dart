@@ -35,17 +35,17 @@ List<Chatmsgobject> Chatmsgobjects = [
     ..Note = "xd"
     ..Send_Date = DateTime.now()
     ..isMe = false,
-  Chatmsgobject()
-    ..Comment = "Nguyễn Quang Minh"
-    ..Note = "Test video network abc abc"
-    ..IdMsg = "3"
-    ..Send_Date = DateTime.now()
-    ..strDataFile = [
-      "https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4",
-      "",
-    ]
-    ..strTypeFile = "mp4"
-    ..isMe = true,
+  // Chatmsgobject()
+  //   ..Comment = "Nguyễn Quang Minh"
+  //   ..Note = "Test video network abc abc"
+  //   ..IdMsg = "3"
+  //   ..Send_Date = DateTime.now()
+  //   ..strDataFile = [
+  //     "https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4",
+  //     "",
+  //   ]
+  //   ..strTypeFile = "mp4"
+  //   ..isMe = true,
   Chatmsgobject()
     ..Comment = "Nguyễn Quang Minh"
     ..Note = "Mở link preview"
@@ -61,6 +61,13 @@ List<Chatmsgobject> Chatmsgobjects = [
     ..Send_Date = DateTime.now()
     ..strDataFile = [
       "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200",
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200"
     ]
     ..strTypeFile = "jpg"
     ..isMe = false,
