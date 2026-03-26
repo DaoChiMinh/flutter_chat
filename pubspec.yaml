@@ -40,6 +40,13 @@ dependencies:
   syncfusion_flutter_pdfviewer: ^33.1.45
   open_filex: ^4.7.0
   path: ^1.9.1
+  photo_manager: ^3.9.0
+  permission_handler: ^12.0.1
+  photo_manager_image_provider: ^2.2.0
+  image_picker: ^1.2.1
+
+
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -50,6 +57,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

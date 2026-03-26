@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_chat/Compoment/chat_boxmsg.dart';
-import 'package:flutter_chat/Compoment/chat_input.dart';
+import 'package:flutter_chat/Component/chat_boxmsg.dart';
+import 'package:flutter_chat/Component/chat_input.dart';
 import 'package:flutter_chat/Module/chatData.dart';
 
+import 'package:flutter_chat/Module/chatobj.dart';
 
 class Chatpage extends StatefulWidget {
   const Chatpage({super.key});
@@ -19,6 +20,7 @@ class _ChatpageState extends State<Chatpage> {
         backgroundColor: Colors.red,
         title: Text("Chat", style: TextStyle(color: Colors.white)),
       ),
+      resizeToAvoidBottomInset: true,
       body: GestureDetector(
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
         child: Container(
