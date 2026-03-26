@@ -20,7 +20,6 @@ class _ChatpageState extends State<Chatpage> {
   );
 
   void CloseAll() {
-    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _showEmoji = false;
       _showGallery = false;
@@ -42,7 +41,10 @@ class _ChatpageState extends State<Chatpage> {
           children: [
             Expanded(
               child: GestureDetector(
-                onTap: CloseAll,
+                onTap: () {
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  CloseAll();
+                },
                 behavior: HitTestBehavior.translucent,
                 child: ValueListenableBuilder<List<Chatmsgobject>>(
                   valueListenable: _msgsNotifier,
