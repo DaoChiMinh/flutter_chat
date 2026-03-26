@@ -461,7 +461,7 @@ class _StickerTabBodyState extends State<_StickerTabBody> {
   List<StickerPack>? _packs = [];
   List<String> urlStikker = [
     "http://mauiapidms.cybersoft.com.vn/stickers/bugcat_capoo",
-    "http://mauiapidms.cybersoft.com.vn/stickers/milk_and_mocha",
+    "http://mauiapidms.cybersoft.com.vn/stickers/milk_mocha",
     "http://mauiapidms.cybersoft.com.vn/stickers/peach_cat",
   ];
   @override
@@ -471,10 +471,10 @@ class _StickerTabBodyState extends State<_StickerTabBody> {
       String packId = getInitialsFromUrl(urlStikker[i]);
       String Id = getInitialsFromUrl2ChuCuoi(urlStikker[i]);
 
-      List<Sticker> _listSticker = [];
+      List<Sticker> listSticker = [];
       for (int j = 0; j < 100; j++) {
         String _url = "${urlStikker[i]}/${Id}${j + 1}.gif";
-        _listSticker.add(
+        listSticker.add(
           Sticker(id: "${Id}_{j + 1}", packId: packId, url: _url),
         );
       }
@@ -483,7 +483,7 @@ class _StickerTabBodyState extends State<_StickerTabBody> {
           id: packId,
           name: packId,
           thumbnail: "thumbnail",
-          stickers: _listSticker,
+          stickers: listSticker,
         ),
       );
     }
