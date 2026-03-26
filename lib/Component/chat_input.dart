@@ -158,7 +158,11 @@ class _ChatInputState extends State<ChatInput> {
     _textController.clear();
     _focusNode.unfocus();
     setState(() {
-      _state = _state.copyWith(isEditing: false);
+      _state = _state.copyWith(
+        isEditing: false,
+        isShowingEmoji: false,
+        isShowingGallery: false,
+      );
     });
   }
 
@@ -181,7 +185,11 @@ class _ChatInputState extends State<ChatInput> {
         ..Note = '',
     );
     setState(() {
-      _state = _state.copyWith(selectedAssets: [], isShowingGallery: false);
+      _state = _state.copyWith(
+        selectedAssets: [],
+        isShowingGallery: false,
+        isShowingEmoji: false,
+      );
     });
   }
   // ----------------------------------------------------------
