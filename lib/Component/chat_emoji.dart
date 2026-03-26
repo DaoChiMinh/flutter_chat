@@ -463,6 +463,7 @@ class _StickerTabBodyState extends State<_StickerTabBody> {
     "http://mauiapidms.cybersoft.com.vn/stickers/bugcat_capoo",
     "http://mauiapidms.cybersoft.com.vn/stickers/milk_mocha",
     "http://mauiapidms.cybersoft.com.vn/stickers/peach_cat",
+    "http://mauiapidms.cybersoft.com.vn/stickers/tonton_friends",
   ];
   @override
   void initState() {
