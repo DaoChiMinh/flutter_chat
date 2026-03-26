@@ -1,10 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_chat/Component/chat_sticker.dart';
-
-// ============================================================
-// DATA — Emoji categories
-// ============================================================
 
 class EmojiCategory {
   final String label;
@@ -123,12 +118,6 @@ final kEmojiCategories = <EmojiCategory>[
       '👻',
       '👽',
       '👾',
-    ],
-  ),
-  const EmojiCategory(
-    label: "Cử chỉ",
-    icon: Icons.back_hand_outlined,
-    emojis: [
       '👋',
       '🤚',
       '🖐️',
@@ -171,42 +160,6 @@ final kEmojiCategories = <EmojiCategory>[
       '🧠',
     ],
   ),
-  const EmojiCategory(
-    label: "Trái tim",
-    icon: Icons.favorite_border,
-    emojis: [
-      '❤️',
-      '🧡',
-      '💛',
-      '💚',
-      '💙',
-      '💜',
-      '🖤',
-      '🤍',
-      '🤎',
-      '💔',
-      '❣️',
-      '💕',
-      '💞',
-      '💓',
-      '💗',
-      '💖',
-      '💘',
-      '💝',
-      '💟',
-      '♥️',
-      '🔥',
-      '✨',
-      '⭐',
-      '🌟',
-      '💫',
-      '💥',
-      '💢',
-      '💦',
-      '💨',
-      '🕊️',
-    ],
-  ),
 ];
 
 class RecentEmojiManager {
@@ -222,10 +175,6 @@ class RecentEmojiManager {
   }
 }
 
-// ============================================================
-// MAIN PANEL — 2 top-level tabs: Emoji | Sticker
-// ============================================================
-
 class ChatEmojiPanel extends StatefulWidget {
   final ValueChanged<String> onEmojiSelected;
   final ValueChanged<Sticker>? onStickerSelected;
@@ -240,142 +189,60 @@ class ChatEmojiPanel extends StatefulWidget {
   State<ChatEmojiPanel> createState() => _ChatEmojiPanelState();
 }
 
-class _ChatEmojiPanelState extends State<ChatEmojiPanel> {
-  int _topTab = 0; // 0 = emoji, 1 = sticker
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.white,
-      child: Column(
-        children: [
-          _TopSegment(
-            selected: _topTab,
-            onChanged: (i) => setState(() => _topTab = i),
-          ),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: _topTab == 0
-                  ? _EmojiTabBody(
-                      key: const ValueKey('emoji'),
-                      onEmojiSelected: widget.onEmojiSelected,
-                    )
-                  : _StickerTabBody(
-                      key: const ValueKey('sticker'),
-                      onStickerSelected: widget.onStickerSelected,
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================
-// TOP SEGMENT
-// ============================================================
-
-class _TopSegment extends StatelessWidget {
-  final int selected;
-  final ValueChanged<int> onChanged;
-
-  const _TopSegment({required this.selected, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-      ),
-      child: Row(
-        children: [
-          _SegBtn(
-            icon: Icons.emoji_emotions_outlined,
-            label: 'Emoji',
-            active: selected == 0,
-            onTap: () => onChanged(0),
-          ),
-          const SizedBox(width: 4),
-          _SegBtn(
-            icon: Icons.sticky_note_2_outlined,
-            label: 'Sticker',
-            active: selected == 1,
-            onTap: () => onChanged(1),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SegBtn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  const _SegBtn({
-    required this.icon,
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: active ? const Color(0xff009EF9) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 18, color: active ? Colors.white : Colors.grey),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: active ? Colors.white : Colors.grey,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================
-// EMOJI TAB BODY
-// ============================================================
-
-class _EmojiTabBody extends StatefulWidget {
-  final ValueChanged<String> onEmojiSelected;
-
-  const _EmojiTabBody({super.key, required this.onEmojiSelected});
-
-  @override
-  State<_EmojiTabBody> createState() => _EmojiTabBodyState();
-}
-
-class _EmojiTabBodyState extends State<_EmojiTabBody>
+class _ChatEmojiPanelState extends State<ChatEmojiPanel>
     with SingleTickerProviderStateMixin {
   late final TabController _tabCtrl;
+  late final List<StickerPack> _stickerPacks;
+
+  // Total tabs = emoji categories + sticker packs
+  int get _totalTabs => kEmojiCategories.length + _stickerPacks.length;
+
+  final List<String> _stickerUrls = [
+    "http://mauiapidms.cybersoft.com.vn/stickers/bugcat_capoo",
+    "http://mauiapidms.cybersoft.com.vn/stickers/milk_mocha",
+    "http://mauiapidms.cybersoft.com.vn/stickers/peach_cat",
+    "http://mauiapidms.cybersoft.com.vn/stickers/tonton_friends",
+  ];
 
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: kEmojiCategories.length, vsync: this);
+    _stickerPacks = _buildStickerPacks();
+    _tabCtrl = TabController(length: _totalTabs, vsync: this);
+  }
+
+  List<StickerPack> _buildStickerPacks() {
+    final packs = <StickerPack>[];
+    for (final url in _stickerUrls) {
+      final segments = Uri.parse(url).pathSegments;
+      final packId = segments.last;
+      final prefix = _initialsFromSegment(packId);
+
+      final stickers = <Sticker>[];
+      for (int j = 0; j < 100; j++) {
+        final stickerUrl = "$url/$prefix${j + 1}.gif";
+        stickers.add(
+          Sticker(id: "${prefix}_${j + 1}", packId: packId, url: stickerUrl),
+        );
+      }
+      packs.add(
+        StickerPack(
+          id: packId,
+          name: packId,
+          thumbnail: "$url/${prefix}1.gif",
+          stickers: stickers,
+        ),
+      );
+    }
+    return packs;
+  }
+
+  String _initialsFromSegment(String segment) {
+    final parts = segment.split('_');
+    return parts
+        .where((e) => e.isNotEmpty)
+        .map((e) => e[0].toUpperCase())
+        .join();
   }
 
   @override
@@ -384,256 +251,118 @@ class _EmojiTabBodyState extends State<_EmojiTabBody>
     super.dispose();
   }
 
-  void _onTap(String emoji) {
+  void _onEmojiTap(String emoji) {
     RecentEmojiManager.add(emoji);
     widget.onEmojiSelected(emoji);
   }
 
+  void _onStickerTap(Sticker sticker) {
+    RecentStickerManager.add(sticker);
+    HapticFeedback.lightImpact();
+    widget.onStickerSelected?.call(sticker);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        TabBar(
-          controller: _tabCtrl,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          indicatorColor: const Color(0xff009EF9),
-          indicatorSize: TabBarIndicatorSize.label,
-          dividerColor: Colors.grey.shade200,
-          tabs: kEmojiCategories
-              .map((c) => Tab(height: 38, child: Icon(c.icon, size: 20)))
-              .toList(),
-        ),
-        Expanded(
-          child: TabBarView(
+    return ColoredBox(
+      color: Colors.white,
+      child: Column(
+        children: [
+          // ── Unified tab bar ──────────────────────────────
+          TabBar(
             controller: _tabCtrl,
-            children: kEmojiCategories.map((cat) {
-              final emojis = cat.label == 'Gần đây'
-                  ? RecentEmojiManager.recents
-                  : cat.emojis;
-
-              if (emojis.isEmpty) {
-                return const Center(
-                  child: Text(
-                    'Chưa có emoji nào',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                );
-              }
-
-              return GridView.builder(
-                padding: const EdgeInsets.all(6),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 8,
-                  mainAxisSpacing: 4,
-                  crossAxisSpacing: 4,
-                ),
-                itemCount: emojis.length,
-                itemBuilder: (_, i) => _AnimatedEmojiCell(
-                  emoji: emojis[i],
-                  onTap: () => _onTap(emojis[i]),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ============================================================
-// STICKER TAB BODY
-// ============================================================
-
-class _StickerTabBody extends StatefulWidget {
-  final ValueChanged<Sticker>? onStickerSelected;
-
-  const _StickerTabBody({super.key, this.onStickerSelected});
-
-  @override
-  State<_StickerTabBody> createState() => _StickerTabBodyState();
-}
-
-class _StickerTabBodyState extends State<_StickerTabBody> {
-  int _selectedPack = 0;
-
-  List<StickerPack>? _packs = [];
-  List<String> urlStikker = [
-    "http://mauiapidms.cybersoft.com.vn/stickers/bugcat_capoo",
-    "http://mauiapidms.cybersoft.com.vn/stickers/milk_mocha",
-    "http://mauiapidms.cybersoft.com.vn/stickers/peach_cat",
-    "http://mauiapidms.cybersoft.com.vn/stickers/tonton_friends",
-  ];
-  @override
-  void initState() {
-    _packs = [];
-    for (int i = 0; i < urlStikker.length; i++) {
-      String packId = getInitialsFromUrl(urlStikker[i]);
-      String Id = getInitialsFromUrl2ChuCuoi(urlStikker[i]);
-
-      List<Sticker> listSticker = [];
-      for (int j = 0; j < 100; j++) {
-        String _url = "${urlStikker[i]}/${Id}${j + 1}.gif";
-        listSticker.add(
-          Sticker(id: "${Id}_{j + 1}", packId: packId, url: _url),
-        );
-      }
-      _packs!.add(
-        StickerPack(
-          id: packId,
-          name: packId,
-          thumbnail: "thumbnail",
-          stickers: listSticker,
-        ),
-      );
-    }
-    super.initState();
-  }
-
-  String getInitialsFromUrl2ChuCuoi(String url) {
-    // Lấy param cuối
-    final lastSegment = Uri.parse(url).pathSegments.last;
-
-    // Tách theo _
-    final parts = lastSegment.split('_');
-
-    // Lấy chữ cái đầu mỗi phần
-    final initials = parts
-        .where((e) => e.isNotEmpty)
-        .map((e) => e[0].toUpperCase())
-        .join();
-
-    return initials;
-  }
-
-  String getInitialsFromUrl(String url) {
-    // Lấy param cuối
-    final lastSegment = Uri.parse(url).pathSegments.last;
-
-    return lastSegment;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final stickers = _selectedPack < 0
-        ? RecentStickerManager.recents
-        : _packs![_selectedPack].stickers;
-
-    return Column(
-      children: [
-        // ── Pack selector bar ─────────────────────────────
-        SizedBox(
-          height: 48,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            itemCount: _packs!.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(width: 6),
-            itemBuilder: (_, i) {
-              if (i == 0) {
-                final isActive = _selectedPack < 0;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedPack = -1),
-                  child: _PackIcon(
-                    isActive: isActive,
-                    child: Icon(
-                      Icons.access_time,
-                      size: 20,
-                      color: isActive ? const Color(0xff009EF9) : Colors.grey,
-                    ),
-                  ),
-                );
-              }
-
-              final idx = i - 1;
-              final pack = _packs![idx];
-              final isActive = _selectedPack == idx;
-
-              return GestureDetector(
-                onTap: () => setState(() => _selectedPack = idx),
-                child: _PackIcon(
-                  isActive: isActive,
-                  child: Padding(
-                    padding: const EdgeInsets.all(3),
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            indicatorColor: const Color(0xff009EF9),
+            indicatorSize: TabBarIndicatorSize.label,
+            dividerColor: Colors.grey.shade200,
+            tabs: [
+              // Emoji category tabs (icons)
+              ...kEmojiCategories.map(
+                (c) => Tab(height: 38, child: Icon(c.icon, size: 20)),
+              ),
+              // Divider tab (visual separator)
+              // Sticker pack tabs (thumbnail images)
+              ..._stickerPacks.map(
+                (pack) => Tab(
+                  height: 38,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
                     child: Image.network(
                       pack.thumbnail,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.broken_image,
-                        size: 18,
-                        color: Colors.grey,
-                      ),
+                      width: 28,
+                      height: 28,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          const Icon(Icons.sticky_note_2_outlined, size: 20),
                     ),
                   ),
                 ),
-              );
-            },
+              ),
+            ],
           ),
-        ),
 
-        Divider(height: 1, color: Colors.grey.shade200),
+          // ── Tab content ──────────────────────────────────
+          Expanded(
+            child: TabBarView(
+              controller: _tabCtrl,
+              children: [
+                // Emoji grids
+                ...kEmojiCategories.map((cat) {
+                  final emojis = cat.label == 'Gần đây'
+                      ? RecentEmojiManager.recents
+                      : cat.emojis;
 
-        // ── Sticker grid ──────────────────────────────────
-        Expanded(
-          child: stickers.isEmpty
-              ? const Center(
-                  child: Text(
-                    'Chưa có sticker nào',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                )
-              : GridView.builder(
-                  padding: const EdgeInsets.all(8),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 4,
-                    mainAxisSpacing: 8,
-                    crossAxisSpacing: 8,
-                  ),
-                  itemCount: stickers.length,
-                  itemBuilder: (_, i) => _AnimatedStickerCell(
-                    sticker: stickers[i],
-                    onTap: () {
-                      RecentStickerManager.add(stickers[i]);
-                      HapticFeedback.lightImpact();
-                      widget.onStickerSelected?.call(stickers[i]);
-                    },
-                  ),
-                ),
-        ),
-      ],
-    );
-  }
-}
+                  if (emojis.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'Chưa có emoji nào',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    );
+                  }
 
-class _PackIcon extends StatelessWidget {
-  final bool isActive;
-  final Widget child;
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(6),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 8,
+                          mainAxisSpacing: 4,
+                          crossAxisSpacing: 4,
+                        ),
+                    itemCount: emojis.length,
+                    itemBuilder: (_, i) => _AnimatedEmojiCell(
+                      emoji: emojis[i],
+                      onTap: () => _onEmojiTap(emojis[i]),
+                    ),
+                  );
+                }),
 
-  const _PackIcon({required this.isActive, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      width: 36,
-      decoration: BoxDecoration(
-        color: isActive ? const Color(0xffE3F2FD) : Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
-        border: isActive
-            ? Border.all(color: const Color(0xff009EF9), width: 1.5)
-            : null,
+                // Sticker grids
+                ..._stickerPacks.map((pack) {
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(8),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          mainAxisSpacing: 8,
+                          crossAxisSpacing: 8,
+                        ),
+                    itemCount: pack.stickers.length,
+                    itemBuilder: (_, i) => _AnimatedStickerCell(
+                      sticker: pack.stickers[i],
+                      onTap: () => _onStickerTap(pack.stickers[i]),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
       ),
-      clipBehavior: Clip.antiAlias,
-      alignment: Alignment.center,
-      child: child,
     );
   }
 }
-
-// ============================================================
-// ANIMATED EMOJI CELL — bounce on tap
-// ============================================================
 
 class _AnimatedEmojiCell extends StatefulWidget {
   final String emoji;
@@ -711,10 +440,6 @@ class _AnimatedEmojiCellState extends State<_AnimatedEmojiCell>
     );
   }
 }
-
-// ============================================================
-// ANIMATED STICKER CELL — bounce + long-press preview
-// ============================================================
 
 class _AnimatedStickerCell extends StatefulWidget {
   final Sticker sticker;
@@ -829,10 +554,6 @@ class _AnimatedStickerCellState extends State<_AnimatedStickerCell>
   }
 }
 
-// ============================================================
-// STICKER PREVIEW BUBBLE (long-press overlay)
-// ============================================================
-
 class _StickerPreviewBubble extends StatefulWidget {
   final String url;
   final Offset anchor;
@@ -916,11 +637,6 @@ class _StickerPreviewBubbleState extends State<_StickerPreviewBubble>
   }
 }
 
-// ============================================================
-// STICKER BUBBLE — hiển thị sticker động trong chat message
-// Zalo-style: bay vào + scale bounce khi xuất hiện
-// ============================================================
-
 class ChatStickerBubble extends StatefulWidget {
   final String url;
   final double size;
@@ -946,7 +662,6 @@ class _ChatStickerBubbleState extends State<ChatStickerBubble>
       duration: const Duration(milliseconds: 400),
     );
 
-    // Scale: 0 → 1.15 → 0.95 → 1.0 (bounce)
     _enterScale = TweenSequence<double>([
       TweenSequenceItem(
         tween: Tween(
@@ -971,7 +686,6 @@ class _ChatStickerBubbleState extends State<ChatStickerBubble>
       ),
     ]).animate(_enterCtrl);
 
-    // Slide lên từ dưới
     _enterSlide = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
@@ -1005,5 +719,48 @@ class _ChatStickerBubbleState extends State<ChatStickerBubble>
         ),
       ),
     );
+  }
+}
+
+class StickerPack {
+  final String id;
+  final String name;
+  final String thumbnail;
+  final List<Sticker> stickers;
+
+  const StickerPack({
+    required this.id,
+    required this.name,
+    required this.thumbnail,
+    required this.stickers,
+  });
+}
+
+class Sticker {
+  final String id;
+  final String packId;
+  final String url;
+  final StickerType type;
+
+  const Sticker({
+    required this.id,
+    required this.packId,
+    required this.url,
+    this.type = StickerType.gif,
+  });
+}
+
+enum StickerType { gif, lottie }
+
+class RecentStickerManager {
+  static final _recent = <Sticker>[];
+  static const _maxRecent = 20;
+
+  static List<Sticker> get recents => List.unmodifiable(_recent);
+
+  static void add(Sticker sticker) {
+    _recent.removeWhere((s) => s.id == sticker.id);
+    _recent.insert(0, sticker);
+    if (_recent.length > _maxRecent) _recent.removeLast();
   }
 }
