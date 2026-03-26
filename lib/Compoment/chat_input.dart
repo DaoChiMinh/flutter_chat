@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:photo_manager/photo_manager.dart';
+import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 
 class ChatInput extends StatefulWidget {
   const ChatInput({super.key});
@@ -8,7 +11,9 @@ class ChatInput extends StatefulWidget {
 
 class _ChatInputState extends State<ChatInput> {
   late TextEditingController _textController;
+  final focusNode = FocusNode();
   bool isEdit = false;
+  bool isShowChonAnh = false;
   @override
   void initState() {
     _textController = TextEditingController();
@@ -56,6 +61,12 @@ class _ChatInputState extends State<ChatInput> {
                   padding: EdgeInsets.symmetric(vertical: 0, horizontal: 12),
                   child: TextField(
                     controller: _textController,
+                    focusNode: focusNode,
+                    onTap: () {
+                      setState(() {
+                        isShowChonAnh = false;
+                      });
+                    },
                     decoration: const InputDecoration(
                       hintText: "Nhập tin nhắn",
                       hintStyle: TextStyle(color: Color(0xff9E9E9E)),
@@ -84,7 +95,16 @@ class _ChatInputState extends State<ChatInput> {
                 SizedBox(
                   width: 36,
                   child: IconButton(
-                    onPressed: () {},
+                    onPressed: () async {
+                      await loadPhoto();
+                      setState(() {
+                        isShowChonAnh = !isShowChonAnh;
+
+                        if (isShowChonAnh) {
+                          focusNode.unfocus();
+                        }
+                      });
+                    },
                     icon: const Icon(Icons.image),
                     color: const Color(0xff9E9E9E),
                     iconSize: 28,
@@ -103,9 +123,89 @@ class _ChatInputState extends State<ChatInput> {
               ],
             ],
           ),
+          ShowChonAnh(),
         ],
       ),
     );
+  }
+
+  Widget ShowChonAnh() {
+    if (_textController.text.isNotEmpty) return SizedBox.shrink();
+    if (isShowChonAnh == false) return SizedBox.shrink();
+
+    return Container(
+      height: 360,
+      child: GridView.builder(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3, // 3 cột như Zalo
+          crossAxisSpacing: 2,
+          mainAxisSpacing: 2,
+        ),
+        itemCount: _assets.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return _buildCameraCell();
+          }
+
+          return GestureDetector(
+            onTap: () {},
+            child: AssetEntityImage(
+              _assets[index],
+              isOriginal: false,
+              thumbnailSize: ThumbnailSize(300, 300),
+              fit: BoxFit.cover,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCameraCell() {
+    return GestureDetector(
+      onTap: () => _openCamera(),
+      child: Container(
+        color: Colors.grey.shade200,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.camera_alt_outlined,
+              size: 32,
+              color: Colors.grey.shade600,
+            ),
+            SizedBox(height: 6),
+            Text(
+              'Chụp ảnh',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openCamera() async {
+    final picker = ImagePicker();
+    final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+    if (photo != null) {
+      await loadPhoto();
+    }
+  }
+
+  List<AssetEntity> _assets = [];
+  Future<void> loadPhoto() async {
+    final permission = await PhotoManager.requestPermissionExtend();
+    if (!permission.isAuth) return;
+
+    // Lấy tất cả album
+    final albums = await PhotoManager.getAssetPathList(
+      type: RequestType.image, // all: ảnh + video + file
+    );
+
+    if (albums.isEmpty) return;
+    final assets = await albums.first.getAssetListPaged(page: 0, size: 80);
+    setState(() => _assets = assets);
   }
 
   @override
