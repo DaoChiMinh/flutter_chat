@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-// ============================================================
-// DATA — Emoji categories
-// ============================================================
-
 class EmojiCategory {
   final String label;
   final IconData icon;
@@ -178,10 +174,6 @@ class RecentEmojiManager {
     if (_recent.length > _maxRecent) _recent.removeLast();
   }
 }
-
-// ============================================================
-// MAIN PANEL — Unified: emoji categories + sticker packs
-// ============================================================
 
 class ChatEmojiPanel extends StatefulWidget {
   final ValueChanged<String> onEmojiSelected;
@@ -372,10 +364,6 @@ class _ChatEmojiPanelState extends State<ChatEmojiPanel>
   }
 }
 
-// ============================================================
-// ANIMATED EMOJI CELL — bounce on tap
-// ============================================================
-
 class _AnimatedEmojiCell extends StatefulWidget {
   final String emoji;
   final VoidCallback onTap;
@@ -452,10 +440,6 @@ class _AnimatedEmojiCellState extends State<_AnimatedEmojiCell>
     );
   }
 }
-
-// ============================================================
-// ANIMATED STICKER CELL — bounce + long-press preview
-// ============================================================
 
 class _AnimatedStickerCell extends StatefulWidget {
   final Sticker sticker;
@@ -570,10 +554,6 @@ class _AnimatedStickerCellState extends State<_AnimatedStickerCell>
   }
 }
 
-// ============================================================
-// STICKER PREVIEW BUBBLE (long-press overlay)
-// ============================================================
-
 class _StickerPreviewBubble extends StatefulWidget {
   final String url;
   final Offset anchor;
@@ -656,10 +636,6 @@ class _StickerPreviewBubbleState extends State<_StickerPreviewBubble>
     );
   }
 }
-
-// ============================================================
-// STICKER BUBBLE — hiển thị sticker động trong chat message
-// ============================================================
 
 class ChatStickerBubble extends StatefulWidget {
   final String url;
