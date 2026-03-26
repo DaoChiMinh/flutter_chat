@@ -147,15 +147,7 @@ class _ChatInputState extends State<ChatInput> {
             return _buildCameraCell();
           }
 
-          return GestureDetector(
-            onTap: () {},
-            child: AssetEntityImage(
-              _assets[index],
-              isOriginal: false,
-              thumbnailSize: ThumbnailSize(300, 300),
-              fit: BoxFit.cover,
-            ),
-          );
+          return ImageChon(_assets[index - 1]);
         },
       ),
     );
@@ -194,13 +186,58 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   List<AssetEntity> _assets = [];
+  List<AssetEntity> _assetsSelect = [];
+  Widget ImageChon(AssetEntity _itemassets) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (_assetsSelect.contains(_itemassets)) {
+            _assetsSelect.remove(_itemassets);
+          } else {
+            _assetsSelect.add(_itemassets);
+          }
+        });
+      },
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: AssetEntityImage(
+              _itemassets,
+              isOriginal: false,
+              thumbnailSize: const ThumbnailSize(300, 300),
+              fit: BoxFit.cover,
+            ),
+          ),
+
+          Positioned.fill(
+            child: Container(
+              color: _assetsSelect.contains(_itemassets)
+                  ? Colors.black.withOpacity(0.6)
+                  : Colors.transparent,
+            ),
+          ),
+
+          Positioned(
+            right: 6,
+            top: 6,
+            child: Icon(
+              _assetsSelect.contains(_itemassets)
+                  ? Icons.check_circle_outline
+                  : Icons.circle_outlined,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> loadPhoto() async {
     final permission = await PhotoManager.requestPermissionExtend();
     if (!permission.isAuth) return;
 
     // Lấy tất cả album
     final albums = await PhotoManager.getAssetPathList(
-      type: RequestType.image, // all: ảnh + video + file
+      type: RequestType.image,
       onlyAll: true,
     );
 
