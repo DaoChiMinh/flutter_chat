@@ -37,12 +37,12 @@ class Chatmsgobject {
     if (strTypeFile.isEmpty) return ChatmsgObjtype.tex;
     strTypeFile = strTypeFile.toLowerCase();
     if (strTypeFile == "url") return ChatmsgObjtype.url;
-    List<String> fileVide0 = ["mp4", "mov", "avi", "mkv", "webm", "3gp"];
+    List<String> fileVideo = ["mp4", "mov", "avi", "mkv", "webm", "3gp"];
     List<String> isImage = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
     List<String> isPdf = ["pdf"];
     List<String> isDoc = ["doc"];
     List<String> isExcel = ["xls", "xlsx"];
-    if (fileVide0.contains(strTypeFile)) return ChatmsgObjtype.video;
+    if (fileVideo.contains(strTypeFile)) return ChatmsgObjtype.video;
     if (isImage.contains(strTypeFile)) return ChatmsgObjtype.image;
     if (isPdf.contains(strTypeFile)) return ChatmsgObjtype.pdf;
     if (isDoc.contains(strTypeFile)) return ChatmsgObjtype.doc;
