@@ -121,6 +121,7 @@ class _ChatInputState extends State<ChatInput> {
     );
 
     _textController.clear();
+    _focusNode.unfocus();
     setState(() {
       _state = _state.copyWith(isEditing: false);
     });
