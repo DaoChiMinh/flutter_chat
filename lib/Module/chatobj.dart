@@ -51,6 +51,11 @@ class Chatmsgobject {
 
     return ChatmsgObjtype.file;
   }
+
+  String get file {
+    if (strDataFile.isEmpty) return "";
+    return strDataFile.first;
+  }
 }
 
 enum ChatmsgObjtype { tex, image, video, pdf, doc, excel, file, url }
