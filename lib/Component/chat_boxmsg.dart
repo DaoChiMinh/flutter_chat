@@ -47,10 +47,6 @@ class _ChatMessageState extends State<ChatMessage> {
   }
 }
 
-// =========================
-// MESSAGE BUBBLE
-// =========================
-
 class _MessageBubble extends StatelessWidget {
   final Chatmsgobject msg;
 

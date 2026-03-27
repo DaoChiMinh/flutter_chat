@@ -454,8 +454,6 @@ class _AssetCell extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------
-
 class _SelectBadge extends StatelessWidget {
   final int? index;
 
