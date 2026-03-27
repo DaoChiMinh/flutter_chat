@@ -320,7 +320,7 @@ class _MessagePreviewBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final type = msg.objtype();
-    final extraText = type == ChatmsgObjtype.url ? getExtraText(msg) : '';
+    // final extraText = type == ChatmsgObjtype.url ? getExtraText(msg) : '';
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -355,7 +355,13 @@ class _MessagePreviewBubble extends StatelessWidget {
             ),
           if (type == ChatmsgObjtype.stiker)
             Image.network(msg.Note, height: 120),
-
+          // ── Video grid ──
+          if (type == ChatmsgObjtype.video)
+            ChatMediaGrid(
+              files: msg.strDataFile,
+              type: ChatmsgObjtype.video,
+              onTapItem: (index) {},
+            ),
           if (type == ChatmsgObjtype.url)
             Column(
               children: [
