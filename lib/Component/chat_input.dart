@@ -194,7 +194,6 @@ class _ChatInputState extends State<ChatInput> {
     if (willShow) _focusNode.unfocus();
   }
 
-  // ★ Attach menu toggle — giống emoji/gallery pattern
   void _onAttachMenuToggled() {
     final willShow = !widget.showAttachMenu;
     widget.onShowAttachMenuChanged(willShow);
