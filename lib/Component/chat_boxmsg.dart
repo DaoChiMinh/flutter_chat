@@ -235,24 +235,6 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
-  void _openImagePath(BuildContext context, String path) {
-    if (path.trim().isEmpty) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => ChatImageViewerPage(path: path)),
-    );
-  }
-
-  void _openImageGallery(BuildContext context) {
-    if (msg.strDataFile.isEmpty) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ChatImageGalleryPage(paths: msg.strDataFile),
-      ),
-    );
-  }
-
   void _openVideoPath(BuildContext context, String path) {
     if (path.trim().isEmpty) return;
     Navigator.push(
