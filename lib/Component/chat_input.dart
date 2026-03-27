@@ -162,21 +162,21 @@ class _ChatInputState extends State<ChatInput> {
   Future<void> _onSendImages() async {
     if (_state.selectedAssets.isEmpty) return;
 
+    List<String> lsImages = [];
     for (final asset in _state.selectedAssets) {
       final file = await asset.file;
       if (file == null) continue;
-
-      widget.onSend(
-        Chatmsgobject()
-          ..Comment = "minhdc"
-          ..isMe = true
-          ..Send_Date = DateTime.now()
-          ..strDataFile = [file.path]
-          ..strTypeFile = asset.mimeType?.split('/').last ?? 'jpg'
-          ..Note = '',
-      );
+      lsImages.add(file.path);
     }
-
+    widget.onSend(
+      Chatmsgobject()
+        ..Comment = "minhdc"
+        ..isMe = true
+        ..Send_Date = DateTime.now()
+        ..strDataFile = lsImages
+        ..strTypeFile = 'jpg'
+        ..Note = '',
+    );
     widget.onShowGalleryChanged(false);
     setState(() => _state = _state.copyWith(selectedAssets: []));
   }
