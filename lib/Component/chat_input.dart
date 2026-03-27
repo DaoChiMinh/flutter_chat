@@ -446,6 +446,12 @@ class _ChatInputState extends State<ChatInput> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // ── ★ Smart URL Preview Card ──
+          if (_urlState != null)
+            _SmartUrlPreview(
+              urlState: _urlState!,
+              onDismiss: () => setState(() => _urlState = null),
+            ),
           _InputRow(
             textController: _textController,
             focusNode: _focusNode,
@@ -457,13 +463,6 @@ class _ChatInputState extends State<ChatInput> {
             onGalleryPressed: _onGalleryToggled,
             onSendPressed: _onSendPressed,
           ),
-
-          // ── ★ Smart URL Preview Card ──
-          if (_urlState != null)
-            _SmartUrlPreview(
-              urlState: _urlState!,
-              onDismiss: () => setState(() => _urlState = null),
-            ),
 
           if (widget.showEmoji)
             SizedBox(
@@ -824,6 +823,7 @@ class _InputRow extends StatelessWidget {
           )
         else ...[
           _IconBtn(icon: Icons.more_horiz, onPressed: () {}),
+          _IconBtn(icon: Icons.mic, onPressed: () {}),
           _IconBtn(icon: Icons.image, onPressed: onGalleryPressed),
         ],
       ],
