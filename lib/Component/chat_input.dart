@@ -867,7 +867,7 @@ class _InputRow extends StatelessWidget {
             onPressed: onSendPressed,
           )
         else ...[
-          _IconBtn(icon: Icons.more_horiz, onPressed: () {}),
+          _IconBtn(icon: Icons.attach_file_rounded, onPressed: () {}),
           _IconBtn(
             icon: Icons.mic,
             onPressed: onMicPressed, // ★ Gọi thu âm
