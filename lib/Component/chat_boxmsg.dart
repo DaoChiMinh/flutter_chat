@@ -56,8 +56,6 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final type = msg.objtype();
 
-    // Kiểm tra xem tin nhắn URL có kèm text riêng không
-    // Ví dụ: "trang web này hay https://dantri.com" → extraText = "trang web này hay"
     final extraText = type == ChatmsgObjtype.url ? _getExtraText(msg) : '';
 
     return GestureDetector(
@@ -92,11 +90,20 @@ class _MessageBubble extends StatelessWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: type == ChatmsgObjtype.tex
-                      ? (msg.isMe ? const Color(0xFFD7FBE8) : Colors.white)
-                      : (msg.isMe
-                            ? const Color(0xFFD7FBE8).withOpacity(0.5)
-                            : Colors.white),
+                  color: type == ChatmsgObjtype.stiker
+                      ? Colors.transparent
+                      : (type == ChatmsgObjtype.tex
+                            ? (msg.isMe
+                                  ? const Color(0xFFD7FBE8)
+                                  : Colors.white)
+                            : (msg.Note.isNotEmpty
+                                  ? (msg.isMe
+                                        ? const Color(
+                                            0xFFD7FBE8,
+                                          ).withOpacity(0.5)
+                                        : Colors.white)
+                                  : Colors.transparent)),
+
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(16),
                     topRight: const Radius.circular(16),
@@ -165,13 +172,23 @@ class _MessageBubble extends StatelessWidget {
                           onTap: () => _openLink(context, msg.file),
                         ),
 
-                      // ── Text message (chỉ cho kiểu tex) ──
-                      if (type == ChatmsgObjtype.tex &&
+                      // ── Text message ──
+                      // Hiển thị Note cho: tex, image (kèm caption), video (kèm caption)
+                      if (_shouldShowNoteText(type) &&
                           msg.Note.trim().isNotEmpty)
-                        ChatMessageText(
-                          text: msg.Note,
-                          isRecalled: msg.isRecalled,
-                          onTapLink: (url) => _openLink(context, url),
+                        Padding(
+                          padding: EdgeInsets.only(
+                            top:
+                                (type == ChatmsgObjtype.image ||
+                                    type == ChatmsgObjtype.video)
+                                ? 8
+                                : 0,
+                          ),
+                          child: ChatMessageText(
+                            text: msg.Note,
+                            isRecalled: msg.isRecalled,
+                            onTapLink: (url) => _openLink(context, url),
+                          ),
                         ),
 
                       const SizedBox(height: 4),
@@ -236,6 +253,13 @@ class _MessageBubble extends StatelessWidget {
       ChatmsgObjtype.excel,
       ChatmsgObjtype.file,
     ].contains(type);
+  }
+
+  /// Các loại tin nhắn nên hiển thị Note text bên dưới media
+  bool _shouldShowNoteText(ChatmsgObjtype type) {
+    return type == ChatmsgObjtype.tex ||
+        type == ChatmsgObjtype.image ||
+        type == ChatmsgObjtype.video;
   }
 
   String _formatDate(DateTime? dt) {

@@ -31,6 +31,23 @@ class ChatInputState {
   }
 }
 
+/// Trạng thái preview URL đang detect
+class _UrlDetectState {
+  final String url;
+  final UrlContentType? contentType; // null = đang detect
+  final UrlTypeResult? typeResult;
+  final UrlMetadata? metadata; // chỉ cho web
+  final bool isFetching;
+
+  const _UrlDetectState({
+    required this.url,
+    this.contentType,
+    this.typeResult,
+    this.metadata,
+    this.isFetching = true,
+  });
+}
+
 class ChatInput extends StatefulWidget {
   const ChatInput({
     super.key,
@@ -43,10 +60,7 @@ class ChatInput extends StatefulWidget {
   });
 
   final ValueChanged<Chatmsgobject> onSend;
-
-  /// Gọi khi metadata cập nhật xong → parent rebuild list (KHÔNG thêm msg mới)
   final VoidCallback? onRefreshMessages;
-
   final bool showEmoji;
   final bool showGallery;
   final ValueChanged<bool> onShowEmojiChanged;
@@ -61,10 +75,8 @@ class _ChatInputState extends State<ChatInput> {
   final _focusNode = FocusNode();
   var _state = const ChatInputState();
 
-  // ── URL preview state ──
-  String? _detectedUrl;
-  UrlMetadata? _urlMetadata;
-  bool _isFetchingPreview = false;
+  // ── URL detect state ──
+  _UrlDetectState? _urlState;
   Timer? _urlDetectTimer;
 
   @override
@@ -82,53 +94,68 @@ class _ChatInputState extends State<ChatInput> {
   void _onTextChanged(String value) {
     setState(() => _state = _state.copyWith(isEditing: value.isNotEmpty));
 
-    // Debounce 600ms → detect URL
     _urlDetectTimer?.cancel();
     _urlDetectTimer = Timer(const Duration(milliseconds: 600), () {
-      _detectAndFetchUrl(value);
+      _detectUrl(value);
     });
   }
 
-  Future<void> _detectAndFetchUrl(String text) async {
+  Future<void> _detectUrl(String text) async {
     final url = UrlMetadataFetcher.extractFirstUrl(text);
 
     // Không có URL → xoá preview
     if (url == null) {
-      if (_detectedUrl != null) {
-        setState(() {
-          _detectedUrl = null;
-          _urlMetadata = null;
-          _isFetchingPreview = false;
-        });
+      if (_urlState != null) {
+        setState(() => _urlState = null);
       }
       return;
     }
 
     // URL giống lần trước → skip
-    if (url == _detectedUrl) return;
+    if (_urlState?.url == url) return;
 
-    // URL mới → fetch metadata
+    // ── Bước 1: Nhận dạng nhanh bằng extension ──
+    final quickResult = UrlMetadataFetcher.detectByExtension(url);
+
+    if (quickResult.type == UrlContentType.image ||
+        quickResult.type == UrlContentType.video) {
+      // Extension rõ ràng → hiện preview ngay
+      setState(() {
+        _urlState = _UrlDetectState(
+          url: url,
+          contentType: quickResult.type,
+          typeResult: quickResult,
+          isFetching: false,
+        );
+      });
+      return;
+    }
+
+    // ── Bước 2: URL không rõ extension → detect song song ──
     setState(() {
-      _detectedUrl = url;
-      _urlMetadata = null;
-      _isFetchingPreview = true;
+      _urlState = _UrlDetectState(url: url, isFetching: true);
     });
 
-    try {
-      final metadata = await UrlMetadataFetcher.fetch(url);
-      if (!mounted) return;
-      // Kiểm tra URL vẫn còn đúng (user chưa thay đổi text)
-      if (_detectedUrl == url) {
-        setState(() {
-          _urlMetadata = metadata;
-          _isFetchingPreview = false;
-        });
-      }
-    } catch (_) {
-      if (mounted && _detectedUrl == url) {
-        setState(() => _isFetchingPreview = false);
-      }
-    }
+    // Detect type + fetch metadata song song
+    final results = await Future.wait([
+      UrlMetadataFetcher.detectType(url),
+      UrlMetadataFetcher.fetch(url),
+    ]);
+
+    if (!mounted || _urlState?.url != url) return;
+
+    final typeResult = results[0] as UrlTypeResult;
+    final metadata = results[1] as UrlMetadata;
+
+    setState(() {
+      _urlState = _UrlDetectState(
+        url: url,
+        contentType: typeResult.type,
+        typeResult: typeResult,
+        metadata: typeResult.type == UrlContentType.web ? metadata : null,
+        isFetching: false,
+      );
+    });
   }
 
   // ----------------------------------------------------------
@@ -197,41 +224,31 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   // ----------------------------------------------------------
-  // ★ SEND — chỉ gửi 1 tin nhắn duy nhất
+  // ★ SMART SEND — phân loại image / video / web
   // ----------------------------------------------------------
 
   void _onSendPressed() {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
 
-    final msg = Chatmsgobject()
-      ..Comment = "minhdc"
-      ..isMe = true
-      ..Send_Date = DateTime.now()
-      ..Note = text;
+    final allUrls = UrlMetadataFetcher.extractAllUrls(text);
 
-    if (_detectedUrl != null) {
-      // ── Tin nhắn có chứa URL ──
-      msg.strDataFile = [_detectedUrl!];
-      msg.strTypeFile = 'url';
-
-      // Nếu metadata đã fetch xong → gắn luôn
-      if (_urlMetadata != null) {
-        msg.titleUrl = _urlMetadata!.title;
-        msg.descriptioneUrl = _urlMetadata!.description;
-        msg.ImageUrl = _urlMetadata!.imageUrl;
-      }
-
-      // Gửi 1 lần duy nhất
-      widget.onSend(msg);
-
-      // Nếu metadata chưa sẵn sàng → fetch async rồi cập nhật
-      if (_urlMetadata == null) {
-        _fetchMetadataLate(msg, _detectedUrl!);
-      }
+    if (allUrls.isEmpty || _urlState == null) {
+      // ── Tin nhắn text thuần ──
+      _sendTextMessage(text);
     } else {
-      // ── Tin nhắn text thường ──
-      widget.onSend(msg);
+      final detectedType = _urlState!.contentType;
+
+      if (detectedType == UrlContentType.image) {
+        // ── ★ URL là ảnh → gửi như tin nhắn ảnh ──
+        _sendImageUrlMessage(text, allUrls);
+      } else if (detectedType == UrlContentType.video) {
+        // ── ★ URL là video → gửi như tin nhắn video ──
+        _sendVideoUrlMessage(text, allUrls);
+      } else {
+        // ── URL là trang web → gửi như tin nhắn URL ──
+        _sendWebUrlMessage(text, allUrls.first);
+      }
     }
 
     // Reset input
@@ -239,25 +256,113 @@ class _ChatInputState extends State<ChatInput> {
     _urlDetectTimer?.cancel();
     setState(() {
       _state = _state.copyWith(isEditing: false);
-      _detectedUrl = null;
-      _urlMetadata = null;
-      _isFetchingPreview = false;
+      _urlState = null;
     });
   }
 
-  /// Fetch metadata sau khi đã gửi tin nhắn → cập nhật msg object → gọi refresh
+  void _sendTextMessage(String text) {
+    widget.onSend(
+      Chatmsgobject()
+        ..Comment = "minhdc"
+        ..isMe = true
+        ..Note = text
+        ..Send_Date = DateTime.now(),
+    );
+  }
+
+  void _sendImageUrlMessage(String text, List<String> imageUrls) {
+    // Lọc chỉ giữ URL ảnh
+    final imgUrls = <String>[];
+    for (final url in imageUrls) {
+      final result = UrlMetadataFetcher.detectByExtension(url);
+      if (result.type == UrlContentType.image) {
+        imgUrls.add(url);
+      }
+    }
+    if (imgUrls.isEmpty) imgUrls.addAll(imageUrls);
+
+    // Tách phần text không phải URL
+    final extraText = _removeUrlsFromText(text, imageUrls);
+
+    widget.onSend(
+      Chatmsgobject()
+        ..Comment = "minhdc"
+        ..isMe = true
+        ..Send_Date = DateTime.now()
+        ..strDataFile = imgUrls
+        ..strTypeFile = 'jpg'
+        ..Note = extraText,
+    );
+  }
+
+  void _sendVideoUrlMessage(String text, List<String> videoUrls) {
+    final vidUrls = <String>[];
+    for (final url in videoUrls) {
+      final result = UrlMetadataFetcher.detectByExtension(url);
+      if (result.type == UrlContentType.video) {
+        vidUrls.add(url);
+      }
+    }
+    if (vidUrls.isEmpty) vidUrls.addAll(videoUrls);
+
+    final extraText = _removeUrlsFromText(text, videoUrls);
+
+    widget.onSend(
+      Chatmsgobject()
+        ..Comment = "minhdc"
+        ..isMe = true
+        ..Send_Date = DateTime.now()
+        ..strDataFile = vidUrls
+        ..strTypeFile = 'mp4'
+        ..Note = extraText,
+    );
+  }
+
+  void _sendWebUrlMessage(String text, String url) {
+    final msg = Chatmsgobject()
+      ..Comment = "minhdc"
+      ..isMe = true
+      ..Note = text
+      ..Send_Date = DateTime.now()
+      ..strDataFile = [url]
+      ..strTypeFile = 'url';
+
+    // Gắn metadata nếu đã có
+    if (_urlState?.metadata != null) {
+      msg.titleUrl = _urlState!.metadata!.title;
+      msg.descriptioneUrl = _urlState!.metadata!.description;
+      msg.ImageUrl = _urlState!.metadata!.imageUrl;
+    }
+
+    widget.onSend(msg);
+
+    // Nếu chưa có metadata → fetch async
+    if (_urlState?.metadata == null) {
+      _fetchMetadataLate(msg, url);
+    }
+  }
+
+  String _removeUrlsFromText(String text, List<String> urls) {
+    var result = text;
+    for (final url in urls) {
+      result = result.replaceAll(url, '');
+      // Thử xoá cả dạng không có https://
+      final noScheme = url
+          .replaceFirst('https://', '')
+          .replaceFirst('http://', '');
+      result = result.replaceAll(noScheme, '');
+    }
+    return result.trim();
+  }
+
   Future<void> _fetchMetadataLate(Chatmsgobject msg, String url) async {
     try {
       final metadata = await UrlMetadataFetcher.fetch(url);
       msg.titleUrl = metadata.title;
       msg.descriptioneUrl = metadata.description;
       msg.ImageUrl = metadata.imageUrl;
-
-      // Gọi refresh để parent rebuild list (KHÔNG gọi onSend)
       widget.onRefreshMessages?.call();
-    } catch (_) {
-      // Thất bại → giữ nguyên, không crash
-    }
+    } catch (_) {}
   }
 
   Future<void> _onSendImages() async {
@@ -332,19 +437,11 @@ class _ChatInputState extends State<ChatInput> {
             onSendPressed: _onSendPressed,
           ),
 
-          // ── ★ URL Preview Card (hiển thị khi đang gõ) ──
-          if (_detectedUrl != null)
-            _UrlPreviewCard(
-              url: _detectedUrl!,
-              metadata: _urlMetadata,
-              isLoading: _isFetchingPreview,
-              onDismiss: () {
-                setState(() {
-                  _detectedUrl = null;
-                  _urlMetadata = null;
-                  _isFetchingPreview = false;
-                });
-              },
+          // ── ★ Smart URL Preview Card ──
+          if (_urlState != null)
+            _SmartUrlPreview(
+              urlState: _urlState!,
+              onDismiss: () => setState(() => _urlState = null),
             ),
 
           if (widget.showEmoji)
@@ -370,25 +467,18 @@ class _ChatInputState extends State<ChatInput> {
 }
 
 // ═══════════════════════════════════════════════════════════
-// ★ URL Preview Card — hiện bên dưới input khi phát hiện URL
+// ★ Smart URL Preview — hiện khác nhau cho image/video/web
 // ═══════════════════════════════════════════════════════════
 
-class _UrlPreviewCard extends StatelessWidget {
-  final String url;
-  final UrlMetadata? metadata;
-  final bool isLoading;
+class _SmartUrlPreview extends StatelessWidget {
+  final _UrlDetectState urlState;
   final VoidCallback onDismiss;
 
-  const _UrlPreviewCard({
-    required this.url,
-    required this.metadata,
-    required this.isLoading,
-    required this.onDismiss,
-  });
+  const _SmartUrlPreview({required this.urlState, required this.onDismiss});
 
   String get _domain {
-    final uri = Uri.tryParse(url);
-    return uri?.host ?? url;
+    final uri = Uri.tryParse(urlState.url);
+    return uri?.host ?? urlState.url;
   }
 
   @override
@@ -404,21 +494,21 @@ class _UrlPreviewCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header: domain + nút đóng ──
+          // ── Header ──
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 4, 0),
             child: Row(
               children: [
-                Icon(Icons.link, size: 16, color: Colors.blue.shade400),
+                Icon(_headerIcon, size: 16, color: _headerColor),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    _domain,
+                    _headerLabel,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.blue.shade600,
+                      color: _headerColor,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -438,7 +528,7 @@ class _UrlPreviewCard extends StatelessWidget {
           ),
 
           // ── Loading ──
-          if (isLoading)
+          if (urlState.isFetching)
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
               child: Row(
@@ -453,35 +543,122 @@ class _UrlPreviewCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    "Đang tải xem trước...",
+                    "Đang nhận dạng...",
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                 ],
               ),
             ),
 
-          // ── Metadata đã sẵn sàng ──
-          if (!isLoading && metadata != null) ...[
-            // Ảnh preview
-            if (metadata!.imageUrl != null && metadata!.imageUrl!.isNotEmpty)
+          // ── ★ Image preview ──
+          if (!urlState.isFetching &&
+              urlState.contentType == UrlContentType.image)
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 120,
+                  child: Image.network(
+                    urlState.url,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: const Color(0xFFF0F2F5),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.broken_image,
+                        color: Colors.grey,
+                        size: 28,
+                      ),
+                    ),
+                    loadingBuilder: (_, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        color: const Color(0xFFF0F2F5),
+                        alignment: Alignment.center,
+                        child: const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+
+          // ── ★ Video preview ──
+          if (!urlState.isFetching &&
+              urlState.contentType == UrlContentType.video)
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: double.infinity,
+                  height: 80,
+                  color: const Color(0xFF2D2D2D),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.play_circle_fill,
+                        color: Colors.white70,
+                        size: 36,
+                      ),
+                      const SizedBox(width: 10),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Video",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Text(
+                            urlState.typeResult?.extension?.toUpperCase() ??
+                                'MP4',
+                            style: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // ── ★ Web metadata preview ──
+          if (!urlState.isFetching &&
+              urlState.contentType == UrlContentType.web &&
+              urlState.metadata != null) ...[
+            if (urlState.metadata!.imageUrl != null)
               SizedBox(
                 width: double.infinity,
                 height: 120,
                 child: Image.network(
-                  metadata!.imageUrl!,
+                  urlState.metadata!.imageUrl!,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                 ),
               ),
-
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (metadata!.title != null)
+                  if (urlState.metadata!.title != null)
                     Text(
-                      metadata!.title!,
+                      urlState.metadata!.title!,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -490,11 +667,11 @@ class _UrlPreviewCard extends StatelessWidget {
                         color: Colors.black87,
                       ),
                     ),
-                  if (metadata!.description != null)
+                  if (urlState.metadata!.description != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
-                        metadata!.description!,
+                        urlState.metadata!.description!,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -507,9 +684,57 @@ class _UrlPreviewCard extends StatelessWidget {
               ),
             ),
           ],
+
+          // ── Web loading (chưa có metadata) ──
+          if (!urlState.isFetching &&
+              urlState.contentType == UrlContentType.web &&
+              urlState.metadata == null)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(10, 4, 10, 10),
+              child: Text(
+                "Trang web",
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  IconData get _headerIcon {
+    switch (urlState.contentType) {
+      case UrlContentType.image:
+        return Icons.image;
+      case UrlContentType.video:
+        return Icons.videocam;
+      case UrlContentType.web:
+      case null:
+        return Icons.link;
+    }
+  }
+
+  Color get _headerColor {
+    switch (urlState.contentType) {
+      case UrlContentType.image:
+        return Colors.green.shade600;
+      case UrlContentType.video:
+        return Colors.orange.shade700;
+      case UrlContentType.web:
+      case null:
+        return Colors.blue.shade600;
+    }
+  }
+
+  String get _headerLabel {
+    switch (urlState.contentType) {
+      case UrlContentType.image:
+        return 'Hình ảnh — $_domain';
+      case UrlContentType.video:
+        return 'Video — $_domain';
+      case UrlContentType.web:
+      case null:
+        return _domain;
+    }
   }
 }
 
