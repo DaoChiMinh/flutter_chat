@@ -15,16 +15,22 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 class ChatMessage extends StatefulWidget {
   final List<Chatmsgobject> msgs;
-
-  const ChatMessage({super.key, required this.msgs});
+  final ValueChanged<Chatmsgobject>? onReply;
+  final ValueChanged<Chatmsgobject>? onRecall;
+  final ValueChanged<Chatmsgobject>? onDelete;
+  const ChatMessage({
+    super.key,
+    required this.msgs,
+    this.onReply,
+    this.onRecall,
+    this.onDelete,
+  });
 
   @override
   State<ChatMessage> createState() => _ChatMessageState();
 }
 
 class _ChatMessageState extends State<ChatMessage> {
-  final ScrollController scrollController = ScrollController();
-
   @override
   Widget build(BuildContext context) {
     if (widget.msgs.isEmpty) {
@@ -37,13 +43,18 @@ class _ChatMessageState extends State<ChatMessage> {
     }
 
     return ListView.builder(
-      controller: scrollController,
       reverse: true,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       itemCount: widget.msgs.length,
       itemBuilder: (context, index) {
         final msg = widget.msgs[widget.msgs.length - 1 - index];
-        return _MessageBubble(key: ValueKey(msg.IdMsg), msg: msg);
+        return _MessageBubble(
+          key: ValueKey(msg.IdMsg),
+          msg: msg,
+          onReply: widget.onReply,
+          onRecall: widget.onRecall,
+          onDelete: widget.onDelete,
+        );
       },
     );
   }
@@ -51,8 +62,17 @@ class _ChatMessageState extends State<ChatMessage> {
 
 class _MessageBubble extends StatelessWidget {
   final Chatmsgobject msg;
+  final ValueChanged<Chatmsgobject>? onReply;
+  final ValueChanged<Chatmsgobject>? onRecall;
+  final ValueChanged<Chatmsgobject>? onDelete;
 
-  const _MessageBubble({super.key, required this.msg});
+  const _MessageBubble({
+    super.key,
+    required this.msg,
+    this.onDelete,
+    this.onRecall,
+    this.onReply,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +80,49 @@ class _MessageBubble extends StatelessWidget {
 
     // Kiểm tra xem tin nhắn URL có kèm text riêng không
     final extraText = type == ChatmsgObjtype.url ? _getExtraText(msg) : '';
-
+    if (msg.isRecalled) {
+      return GestureDetector(
+        onLongPress: () => _showMessageActions(context),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            mainAxisAlignment: msg.isMe
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
+            children: [
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.76,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: msg.isMe ? const Color(0xFFD7FBE8) : Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: Radius.circular(msg.isMe ? 16 : 4),
+                      bottomRight: Radius.circular(msg.isMe ? 4 : 16),
+                    ),
+                    border: Border.all(color: const Color(0xFFE6E6E6)),
+                  ),
+                  child: const Text(
+                    "Tin nhắn đã được thu hồi",
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return GestureDetector(
       onLongPress: () => _showMessageActions(context),
       child: Container(
@@ -120,6 +182,11 @@ class _MessageBubble extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (msg.replyMsg != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _ReplyPreview(reply: msg.replyMsg!),
+                        ),
                       // ── Image grid ──
                       if (type == ChatmsgObjtype.image)
                         ChatMediaGrid(
@@ -357,23 +424,22 @@ class _MessageBubble extends StatelessWidget {
     }
   }
 
-  void _showMessageActions(BuildContext context) {
-    showModalBottomSheet(
+  Future<void> _showMessageActions(BuildContext context) async {
+    final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
       builder: (_) {
         return SafeArea(
           child: Wrap(
             children: [
-              if (msg.Note.trim().isNotEmpty)
-                ListTile(
-                  leading: const Icon(Icons.reply),
-                  title: const Text(
-                    "Trả lời",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  onTap: () => Navigator.pop(context, "reply"),
+              ListTile(
+                leading: const Icon(Icons.reply),
+                title: const Text(
+                  "Trả lời",
+                  style: TextStyle(fontWeight: FontWeight.w500),
                 ),
+                onTap: () => Navigator.pop(context, "reply"),
+              ),
               ListTile(
                 leading: const Icon(Icons.copy),
                 title: const Text(
@@ -382,9 +448,7 @@ class _MessageBubble extends StatelessWidget {
                 ),
                 iconColor: Colors.blueGrey,
                 onTap: () async {
-                  Navigator.pop(context);
-                  await Clipboard.setData(ClipboardData(text: msg.Note));
-                  _showSnackBar(context, "Đã sao chép nội dung");
+                  Navigator.pop(context, "copy");
                 },
               ),
               ListTile(
@@ -396,78 +460,8 @@ class _MessageBubble extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
                 iconColor: Colors.cyan,
-                onTap: () {
-                  msg.isPinned = !msg.isPinned;
-                  _showSnackBar(
-                    context,
-                    msg.isPinned ? "Đã ghim" : "Đã bỏ ghim",
-                  );
-                  Navigator.pop(context, "pin");
-                },
+                onTap: () => Navigator.pop(context, "pin"),
               ),
-              if (msg.objtype() == ChatmsgObjtype.url)
-                ListTile(
-                  leading: const Icon(Icons.link),
-                  iconColor: Colors.blue,
-                  title: const Text(
-                    "Mở liên kết",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _openLink(context, msg.file);
-                  },
-                ),
-              if (msg.objtype() == ChatmsgObjtype.image)
-                ListTile(
-                  leading: const Icon(Icons.image_outlined),
-                  iconColor: Colors.blue,
-                  title: const Text(
-                    "Xem ảnh",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ChatImageGalleryPage(
-                          paths: msg.strDataFile,
-                          initialIndex: 0,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              if (msg.objtype() == ChatmsgObjtype.video)
-                ListTile(
-                  leading: const Icon(Icons.play_circle_outline),
-                  iconColor: Colors.blue,
-                  title: const Text(
-                    "Xem video",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    final path = msg.strDataFile.isNotEmpty
-                        ? msg.strDataFile.first
-                        : msg.file;
-                    _openVideoPath(context, path);
-                  },
-                ),
-              if (_isFileType(msg.objtype()))
-                ListTile(
-                  leading: const Icon(Icons.attach_file),
-                  iconColor: Colors.blue,
-                  title: const Text(
-                    "Mở tệp",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _openFile(context);
-                  },
-                ),
               if (msg.isMe && !msg.isRecalled)
                 ListTile(
                   leading: const Icon(Icons.undo),
@@ -478,20 +472,39 @@ class _MessageBubble extends StatelessWidget {
                   ),
                   onTap: () => Navigator.pop(context, "recall"),
                 ),
-              if (msg.isMe && !msg.isRecalled)
-                ListTile(
-                  leading: const Icon(Icons.delete_outline, color: Colors.red),
-                  title: const Text(
-                    "Xóa",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  onTap: () => Navigator.pop(context, "delete"),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  "Xóa",
+                  style: TextStyle(fontWeight: FontWeight.w500),
                 ),
+                onTap: () => Navigator.pop(context, "delete"),
+              ),
             ],
           ),
         );
       },
     );
+
+    switch (action) {
+      case "reply":
+        onReply?.call(msg);
+        break;
+      case "recall":
+        onRecall?.call(msg);
+        break;
+      case "delete":
+        onDelete?.call(msg);
+        break;
+      case "copy":
+        await Clipboard.setData(ClipboardData(text: msg.Note));
+        _showSnackBar(context, "Đã sao chép nội dung");
+        break;
+      case "pin":
+        msg.isPinned = !msg.isPinned;
+        _showSnackBar(context, msg.isPinned ? "Đã ghim" : "Đã bỏ ghim");
+        break;
+    }
   }
 }
 
@@ -849,7 +862,7 @@ class ChatMediaGrid extends StatelessWidget {
           width: w,
           height: h,
           child: type == ChatmsgObjtype.video
-              ? _buildVideoThumb()
+              ? ChatVideoThumb(path: files[index])
               : _buildImage(files[index]),
         ),
       ),
@@ -891,27 +904,27 @@ class ChatMediaGrid extends StatelessWidget {
     }
   }
 
-  Widget _buildVideoThumb() {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Container(
-          color: const Color(0xFFE8ECEF),
-          alignment: Alignment.center,
-          child: const Icon(Icons.videocam, color: Colors.grey, size: 30),
-        ),
-        Container(
-          color: Colors.black26,
-          alignment: Alignment.center,
-          child: const Icon(
-            Icons.play_circle_fill,
-            color: Colors.white,
-            size: 34,
-          ),
-        ),
-      ],
-    );
-  }
+  // Widget _buildVideoThumb() {
+  //   return Stack(
+  //     fit: StackFit.expand,
+  //     children: [
+  //       Container(
+  //         color: const Color(0xFFE8ECEF),
+  //         alignment: Alignment.center,
+  //         child: const Icon(Icons.videocam, color: Colors.grey, size: 30),
+  //       ),
+  //       Container(
+  //         color: Colors.black26,
+  //         alignment: Alignment.center,
+  //         child: const Icon(
+  //           Icons.play_circle_fill,
+  //           color: Colors.white,
+  //           size: 34,
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
 
   Widget _fallback() {
     return Container(
@@ -1253,7 +1266,9 @@ class ChatMessageFile extends StatelessWidget {
   Widget build(BuildContext context) {
     IconData icon = Icons.insert_drive_file_outlined;
     Color iconColor = Colors.grey;
-
+    final fileName = Uri.tryParse(msg.file)?.pathSegments.isNotEmpty == true
+        ? Uri.parse(msg.file).pathSegments.last
+        : msg.file.split('/').last;
     switch (msg.strTypeFile.toLowerCase()) {
       case "pdf":
         icon = Icons.picture_as_pdf;
@@ -1295,7 +1310,7 @@ class ChatMessageFile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    msg.Note.isNotEmpty ? msg.Note : "Tệp đính kèm",
+                    fileName.isNotEmpty ? fileName : "Tệp đính kèm",
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w600),
@@ -1887,6 +1902,391 @@ class ChatUnsupportedFilePage extends StatelessWidget {
           label: const Text('Mở bằng ứng dụng khác'),
         ),
       ),
+    );
+  }
+}
+
+class _ReplyPreview extends StatelessWidget {
+  final Chatmsgobject reply;
+  final VoidCallback? onTap;
+
+  const _ReplyPreview({required this.reply, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final type = reply.objtype();
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 3,
+              height: 42,
+              decoration: BoxDecoration(
+                color: reply.isMe ? Colors.green : Colors.blue,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    reply.isMe ? "Bạn" : reply.Comment,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  _buildReplyContent(type),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReplyContent(ChatmsgObjtype type) {
+    if (reply.isRecalled) {
+      return const Text(
+        "Tin nhắn đã được thu hồi",
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(fontSize: 12, color: Colors.black54),
+      );
+    }
+
+    switch (type) {
+      case ChatmsgObjtype.image:
+        return _replyMediaPreview(
+          child: _buildImageThumb(reply.file),
+          text: reply.Note.isNotEmpty ? reply.Note : "Hình ảnh",
+        );
+
+      case ChatmsgObjtype.video:
+        return _replyMediaPreview(
+          child: _buildVideoThumb(reply.file),
+          text: reply.Note.isNotEmpty ? reply.Note : "Video",
+        );
+
+      case ChatmsgObjtype.pdf:
+      case ChatmsgObjtype.doc:
+      case ChatmsgObjtype.excel:
+      case ChatmsgObjtype.file:
+        return _replyFilePreview(reply.file);
+
+      case ChatmsgObjtype.url:
+        return _replyLinkPreview();
+
+      case ChatmsgObjtype.audio:
+        return const Text(
+          "Tin nhắn thoại",
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        );
+
+      case ChatmsgObjtype.tex:
+      case ChatmsgObjtype.stiker:
+      default:
+        return Text(
+          reply.Note.isNotEmpty ? reply.Note : "Tin nhắn",
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12, color: Colors.black54),
+        );
+    }
+  }
+
+  Widget _replyMediaPreview({required Widget child, required String text}) {
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(width: 42, height: 42, child: child),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _replyFilePreview(String path) {
+    final fileName = path.split('/').last;
+
+    return Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          alignment: Alignment.center,
+          child: const Icon(Icons.insert_drive_file, size: 22),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            fileName,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _replyLinkPreview() {
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(
+            width: 42,
+            height: 42,
+            child: reply.ImageUrl != null && reply.ImageUrl!.isNotEmpty
+                ? Image.network(reply.ImageUrl!, fit: BoxFit.cover)
+                : Container(
+                    color: Colors.white.withOpacity(0.15),
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.link),
+                  ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            reply.titleUrl?.isNotEmpty == true
+                ? reply.titleUrl!
+                : (reply.file.isNotEmpty ? reply.file : "Liên kết"),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImageThumb(String path) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return Image.network(path, fit: BoxFit.cover);
+    }
+    return Image.asset(
+      path,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        color: Colors.black12,
+        alignment: Alignment.center,
+        child: const Icon(Icons.image),
+      ),
+    );
+  }
+
+  Widget _buildVideoThumb(String path) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        _buildImageThumb(path), // nếu bạn đã có thumbnail thật thì thay vào đây
+        Container(
+          color: Colors.black26,
+          alignment: Alignment.center,
+          child: const Icon(
+            Icons.play_circle_fill,
+            color: Colors.white,
+            size: 20,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class ChatVideoThumb extends StatefulWidget {
+  final String path;
+
+  const ChatVideoThumb({super.key, required this.path});
+
+  @override
+  State<ChatVideoThumb> createState() => _ChatVideoThumbState();
+}
+
+class _ChatVideoThumbState extends State<ChatVideoThumb> {
+  VideoPlayerController? _controller;
+  bool _ready = false;
+  bool _hasError = false;
+  String _durationText = "Video";
+
+  bool get _isNetwork {
+    final value = widget.path.trim();
+    return value.startsWith("http://") || value.startsWith("https://");
+  }
+
+  bool get _isBase64 {
+    final value = widget.path.trim();
+    if (value.isEmpty || _isNetwork) return false;
+    if (File(value).existsSync()) return false;
+    if (value.startsWith("data:video/")) return true;
+    if (value.length < 100) return false;
+    return RegExp(r'^[A-Za-z0-9+/=\r\n]+$').hasMatch(value);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initVideo();
+  }
+
+  Future<void> _initVideo() async {
+    try {
+      final source = widget.path.trim();
+      if (source.isEmpty) throw Exception("Empty video source");
+
+      if (_isNetwork) {
+        _controller = VideoPlayerController.networkUrl(Uri.parse(source));
+      } else if (_isBase64) {
+        final file = await _writeTempVideo(source);
+        _controller = VideoPlayerController.file(file);
+      } else {
+        _controller = VideoPlayerController.file(File(source));
+      }
+
+      await _controller!.initialize();
+      await _controller!.pause();
+
+      final d = _controller!.value.duration;
+      _durationText = _format(d);
+
+      if (!mounted) return;
+      setState(() {
+        _ready = true;
+        _hasError = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _ready = false;
+        _hasError = true;
+        _durationText = "Video";
+      });
+    }
+  }
+
+  Future<File> _writeTempVideo(String base64Value) async {
+    final raw = base64Value.contains(',')
+        ? base64Value.substring(base64Value.indexOf(',') + 1)
+        : base64Value;
+
+    final normalized = raw.replaceAll('\n', '').replaceAll('\r', '');
+    final hash = normalized.hashCode;
+    final file = File('${Directory.systemTemp.path}/chat_video_$hash.mp4');
+
+    if (await file.exists()) return file;
+
+    final bytes = base64Decode(normalized);
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
+  }
+
+  String _format(Duration d) {
+    final hh = d.inHours;
+    final mm = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final ss = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return hh > 0 ? '$hh:$mm:$ss' : '$mm:$ss';
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget body;
+
+    if (_hasError) {
+      body = Container(
+        color: const Color(0xFFF5F5F5),
+        alignment: Alignment.center,
+        child: const Icon(Icons.broken_image, color: Colors.grey, size: 36),
+      );
+    } else if (_ready && _controller != null) {
+      body = FittedBox(
+        fit: BoxFit.cover,
+        child: SizedBox(
+          width: _controller!.value.size.width,
+          height: _controller!.value.size.height,
+          child: VideoPlayer(_controller!),
+        ),
+      );
+    } else {
+      body = Container(
+        color: Colors.black12,
+        alignment: Alignment.center,
+        child: const SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        body,
+        Container(
+          color: Colors.black26,
+          alignment: Alignment.center,
+          child: const Icon(
+            Icons.play_circle_fill,
+            color: Colors.white,
+            size: 34,
+          ),
+        ),
+        Positioned(
+          right: 8,
+          bottom: 8,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              _durationText,
+              style: const TextStyle(color: Colors.white, fontSize: 11),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

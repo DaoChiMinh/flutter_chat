@@ -23,7 +23,7 @@ List<ChatMenu> ChatMenus = [];
 
 List<Chatmsgobject> Chatmsgobjects = [
   Chatmsgobject()
-    ..Comment = "Nguyễn Quang Minh"
+    ..Comment = "abcds"
     ..IdMsg = "1"
     ..Note =
         "Cơ quan điều hành quyết định giảm 2.040 đồng/lít với xăng E5 RON 92 và giảm 3.890 đồng/lít với xăng RON 95. Sau điều chỉnh, giá bán lẻ với xăng E5 RON 92 là 28.070 đồng/lít và xăng RON 95 là 29.950 đồng/lít."
@@ -35,17 +35,16 @@ List<Chatmsgobject> Chatmsgobjects = [
     ..Note = "xd"
     ..Send_Date = DateTime.now()
     ..isMe = false,
-  // Chatmsgobject()
-  //   ..Comment = "Nguyễn Quang Minh"
-  //   ..Note = "Test video network abc abc"
-  //   ..IdMsg = "3"
-  //   ..Send_Date = DateTime.now()
-  //   ..strDataFile = [
-  //     "https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4",
-  //     "",
-  //   ]
-  //   ..strTypeFile = "mp4"
-  //   ..isMe = true,
+  Chatmsgobject()
+    ..Comment = "Nguyễn Quang Minh"
+    ..Note = "Test video network abc abc"
+    ..IdMsg = "3"
+    ..Send_Date = DateTime.now()
+    ..strDataFile = [
+      "https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4",
+    ]
+    ..strTypeFile = "mp4"
+    ..isMe = true,
   Chatmsgobject()
     ..Comment = "Nguyễn Quang Minh"
     ..Note = "Mở link preview"
@@ -85,4 +84,11 @@ List<Chatmsgobject> Chatmsgobjects = [
     ..IdMsg = "7"
     ..Send_Date = DateTime.now()
     ..isMe = true,
+  // Chatmsgobject()
+  //   ..Comment = "Nguyễn Quang Minh"
+  //   ..Note = "test reply"
+  //   ..IdMsg = "8"
+  //   ..Send_Date = DateTime.now()
+  //   ..isMe = true
+  //   ..replyMsg = Chatmsgobject() ..Note = "ádsd"
 ];
