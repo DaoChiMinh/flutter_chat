@@ -47,23 +47,30 @@ class Chatmsgobject {
   /// false khi: đã fetch xong HOẶC đã có metadata
   bool get isUrlLoading => !isUrlFetchDone && !hasUrlPreview;
 
+  // ── ★ Audio metadata ──
+  int audioDurationSeconds = 0; // thời lượng ghi âm (giây)
+
   ChatmsgObjtype objtype() {
     if (strTypeFile.isEmpty) return ChatmsgObjtype.tex;
 
     strTypeFile = strTypeFile.toLowerCase();
     if (strTypeFile == "url") return ChatmsgObjtype.url;
+
     List<String> fileVideo = ["mp4", "mov", "avi", "mkv", "webm", "3gp"];
     List<String> isImage = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
     List<String> isPdf = ["pdf"];
     List<String> isDoc = ["doc", "docx"];
     List<String> sticker = ["stiker"];
     List<String> isExcel = ["xls", "xlsx"];
+    List<String> isAudio = ["m4a", "mp3", "wav", "aac", "ogg", "voice"];
+
     if (fileVideo.contains(strTypeFile)) return ChatmsgObjtype.video;
     if (isImage.contains(strTypeFile)) return ChatmsgObjtype.image;
     if (isPdf.contains(strTypeFile)) return ChatmsgObjtype.pdf;
     if (isDoc.contains(strTypeFile)) return ChatmsgObjtype.doc;
     if (isExcel.contains(strTypeFile)) return ChatmsgObjtype.excel;
     if (sticker.contains(strTypeFile)) return ChatmsgObjtype.stiker;
+    if (isAudio.contains(strTypeFile)) return ChatmsgObjtype.audio;
     return ChatmsgObjtype.file;
   }
 
@@ -73,7 +80,18 @@ class Chatmsgobject {
   }
 }
 
-enum ChatmsgObjtype { tex, image, video, pdf, doc, excel, file, url, stiker }
+enum ChatmsgObjtype {
+  tex,
+  image,
+  video,
+  pdf,
+  doc,
+  excel,
+  file,
+  url,
+  stiker,
+  audio, // ★ Tin nhắn thoại
+}
 
 class ChatMenu {
   List<ChatItemMenu>? ChatItemMenus;

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_chat/Component/chat_audio.dart';
 import 'package:flutter_chat/Component/chat_url_preview.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
 import 'package:open_filex/open_filex.dart';
@@ -58,7 +59,6 @@ class _MessageBubble extends StatelessWidget {
     final type = msg.objtype();
 
     // Kiểm tra xem tin nhắn URL có kèm text riêng không
-    // Ví dụ: "trang web này hay https://dantri.com" → extraText = "trang web này hay"
     final extraText = type == ChatmsgObjtype.url ? _getExtraText(msg) : '';
 
     return GestureDetector(
@@ -95,7 +95,8 @@ class _MessageBubble extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: type == ChatmsgObjtype.stiker
                       ? Colors.transparent
-                      : (type == ChatmsgObjtype.tex
+                      : (type == ChatmsgObjtype.tex ||
+                                type == ChatmsgObjtype.audio
                             ? (msg.isMe
                                   ? const Color(0xFFD7FBE8)
                                   : Colors.white)
@@ -156,6 +157,15 @@ class _MessageBubble extends StatelessWidget {
                           onTap: () => _openFile(context),
                         ),
 
+                      // ── ★ Audio message ──
+                      if (type == ChatmsgObjtype.audio)
+                        ChatAudioBubble(
+                          audioData: msg.file,
+                          durationSeconds: msg.audioDurationSeconds > 0
+                              ? msg.audioDurationSeconds
+                              : null,
+                        ),
+
                       // ── ★ URL: text ngoài URL trước ──
                       if (type == ChatmsgObjtype.url && extraText.isNotEmpty)
                         Padding(
@@ -175,7 +185,6 @@ class _MessageBubble extends StatelessWidget {
                         ),
 
                       // ── Text message ──
-                      // Hiển thị Note cho: tex, image (kèm caption), video (kèm caption)
                       if (_shouldShowNoteText(type) &&
                           msg.Note.trim().isNotEmpty)
                         Padding(
@@ -227,18 +236,14 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
-  // ── Lấy text KHÔNG PHẢI URL từ Note ──
-  // "trang web này hay https://dantri.com" → "trang web này hay"
   String _getExtraText(Chatmsgobject msg) {
     var text = msg.Note.trim();
     if (text.isEmpty) return '';
 
-    // Xoá URL ra khỏi text
     for (final url in msg.strDataFile) {
       text = text.replaceAll(url, '');
     }
 
-    // Xoá thêm dạng không có https://
     final urlRegex = RegExp(
       r'(https?://[^\s]+)|(www\.[^\s]+)|((?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:[/?#][^\s]*)?)',
       caseSensitive: false,
@@ -516,7 +521,6 @@ class _ChatMessageUrlState extends State<ChatMessageUrl> {
   @override
   void initState() {
     super.initState();
-    // ★ Nếu chưa có metadata và chưa fetch → tự fetch
     if (msg.isUrlLoading) {
       _autoFetch();
     }
@@ -540,7 +544,6 @@ class _ChatMessageUrlState extends State<ChatMessageUrl> {
       msg.descriptioneUrl = metadata.description;
       msg.ImageUrl = metadata.imageUrl;
     } catch (_) {
-      // Timeout hoặc lỗi → bỏ qua
     } finally {
       _markDone();
     }
@@ -566,7 +569,6 @@ class _ChatMessageUrlState extends State<ChatMessageUrl> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Ảnh preview (nếu có) ──
             if (msg.ImageUrl != null && msg.ImageUrl!.isNotEmpty)
               SizedBox(
                 width: double.infinity,
@@ -603,7 +605,6 @@ class _ChatMessageUrlState extends State<ChatMessageUrl> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Domain ──
                   Text(
                     _displayDomain,
                     style: TextStyle(
@@ -613,7 +614,6 @@ class _ChatMessageUrlState extends State<ChatMessageUrl> {
                     ),
                   ),
 
-                  // ── Title ──
                   if (msg.titleUrl != null && msg.titleUrl!.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
@@ -630,7 +630,6 @@ class _ChatMessageUrlState extends State<ChatMessageUrl> {
                       ),
                     ),
 
-                  // ── Description ──
                   if (msg.descriptioneUrl != null &&
                       msg.descriptioneUrl!.isNotEmpty)
                     Padding(
@@ -647,7 +646,6 @@ class _ChatMessageUrlState extends State<ChatMessageUrl> {
                       ),
                     ),
 
-                  // ── Loading (tối đa 10 giây, sau đó tự ẩn) ──
                   if (msg.isUrlLoading)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),

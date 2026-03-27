@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_chat/Component/chat_audio.dart';
 import 'package:flutter_chat/Component/chat_emoji.dart';
 import 'package:flutter_chat/Component/chat_url_preview.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
@@ -79,11 +80,16 @@ class _ChatInputState extends State<ChatInput> {
   _UrlDetectState? _urlState;
   Timer? _urlDetectTimer;
 
+  // ── ★ Voice recording state ──
+  final _voiceController = VoiceRecorderController();
+  bool _isRecording = false;
+
   @override
   void dispose() {
     _urlDetectTimer?.cancel();
     _textController.dispose();
     _focusNode.dispose();
+    _voiceController.dispose();
     super.dispose();
   }
 
@@ -103,7 +109,6 @@ class _ChatInputState extends State<ChatInput> {
   Future<void> _detectUrl(String text) async {
     final url = UrlMetadataFetcher.extractFirstUrl(text);
 
-    // Không có URL → xoá preview
     if (url == null) {
       if (_urlState != null) {
         setState(() => _urlState = null);
@@ -111,15 +116,12 @@ class _ChatInputState extends State<ChatInput> {
       return;
     }
 
-    // URL giống lần trước → skip
     if (_urlState?.url == url) return;
 
-    // ── Bước 1: Nhận dạng nhanh bằng extension ──
     final quickResult = UrlMetadataFetcher.detectByExtension(url);
 
     if (quickResult.type == UrlContentType.image ||
         quickResult.type == UrlContentType.video) {
-      // Extension rõ ràng → hiện preview ngay
       setState(() {
         _urlState = _UrlDetectState(
           url: url,
@@ -131,13 +133,11 @@ class _ChatInputState extends State<ChatInput> {
       return;
     }
 
-    // ── Bước 2: URL không rõ extension → detect song song (timeout 10s) ──
     setState(() {
       _urlState = _UrlDetectState(url: url, isFetching: true);
     });
 
     try {
-      // Detect type + fetch metadata song song, timeout 10 giây
       final results = await Future.wait([
         UrlMetadataFetcher.detectType(url),
         UrlMetadataFetcher.fetch(url),
@@ -158,7 +158,6 @@ class _ChatInputState extends State<ChatInput> {
         );
       });
     } catch (_) {
-      // Timeout hoặc lỗi → dừng loading, hiện mặc định web
       if (!mounted || _urlState?.url != url) return;
       setState(() {
         _urlState = _UrlDetectState(
@@ -236,7 +235,60 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   // ----------------------------------------------------------
-  // ★ SMART SEND — phân loại image / video / web
+  // ★ Voice Recording
+  // ----------------------------------------------------------
+
+  Future<void> _onMicPressed() async {
+    if (_isRecording) return; // đang thu thì không làm gì
+
+    // Đóng emoji/gallery
+    widget.onShowEmojiChanged(false);
+    widget.onShowGalleryChanged(false);
+    _focusNode.unfocus();
+
+    final ok = await _voiceController.start();
+    if (ok) {
+      setState(() => _isRecording = true);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text('Không thể thu âm. Vui lòng cấp quyền microphone.'),
+            ),
+          );
+      }
+    }
+  }
+
+  Future<void> _onVoiceSend() async {
+    final result = await _voiceController.stop();
+    setState(() => _isRecording = false);
+
+    if (result == null) return;
+
+    // Gửi tin nhắn audio với base64 data
+    widget.onSend(
+      Chatmsgobject()
+        ..Comment = "minhdc"
+        ..isMe = true
+        ..Send_Date = DateTime.now()
+        ..strDataFile =
+            [result.base64Data] // base64 audio data
+        ..strTypeFile = 'voice'
+        ..audioDurationSeconds = result.durationSeconds
+        ..Note = '', // không có text
+    );
+  }
+
+  Future<void> _onVoiceCancel() async {
+    await _voiceController.cancel();
+    setState(() => _isRecording = false);
+  }
+
+  // ----------------------------------------------------------
+  // ★ SMART SEND
   // ----------------------------------------------------------
 
   void _onSendPressed() {
@@ -246,24 +298,19 @@ class _ChatInputState extends State<ChatInput> {
     final allUrls = UrlMetadataFetcher.extractAllUrls(text);
 
     if (allUrls.isEmpty || _urlState == null) {
-      // ── Tin nhắn text thuần ──
       _sendTextMessage(text);
     } else {
       final detectedType = _urlState!.contentType;
 
       if (detectedType == UrlContentType.image) {
-        // ── ★ URL là ảnh → gửi như tin nhắn ảnh ──
         _sendImageUrlMessage(text, allUrls);
       } else if (detectedType == UrlContentType.video) {
-        // ── ★ URL là video → gửi như tin nhắn video ──
         _sendVideoUrlMessage(text, allUrls);
       } else {
-        // ── URL là trang web → gửi như tin nhắn URL ──
         _sendWebUrlMessage(text, allUrls.first);
       }
     }
 
-    // Reset input
     _textController.clear();
     _urlDetectTimer?.cancel();
     setState(() {
@@ -283,7 +330,6 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   void _sendImageUrlMessage(String text, List<String> imageUrls) {
-    // Lọc chỉ giữ URL ảnh
     final imgUrls = <String>[];
     for (final url in imageUrls) {
       final result = UrlMetadataFetcher.detectByExtension(url);
@@ -293,7 +339,6 @@ class _ChatInputState extends State<ChatInput> {
     }
     if (imgUrls.isEmpty) imgUrls.addAll(imageUrls);
 
-    // Tách phần text không phải URL
     final extraText = _removeUrlsFromText(text, imageUrls);
 
     widget.onSend(
@@ -339,17 +384,15 @@ class _ChatInputState extends State<ChatInput> {
       ..strDataFile = [url]
       ..strTypeFile = 'url';
 
-    // Gắn metadata nếu đã có
     if (_urlState?.metadata != null) {
       msg.titleUrl = _urlState!.metadata!.title;
       msg.descriptioneUrl = _urlState!.metadata!.description;
       msg.ImageUrl = _urlState!.metadata!.imageUrl;
-      msg.isUrlFetchDone = true; // ★ đã có metadata → không loading
+      msg.isUrlFetchDone = true;
     }
 
     widget.onSend(msg);
 
-    // Nếu chưa có metadata → fetch async (timeout 10s)
     if (!msg.isUrlFetchDone) {
       _fetchMetadataLate(msg, url);
     }
@@ -359,7 +402,6 @@ class _ChatInputState extends State<ChatInput> {
     var result = text;
     for (final url in urls) {
       result = result.replaceAll(url, '');
-      // Thử xoá cả dạng không có https://
       final noScheme = url
           .replaceFirst('https://', '')
           .replaceFirst('http://', '');
@@ -368,7 +410,6 @@ class _ChatInputState extends State<ChatInput> {
     return result.trim();
   }
 
-  /// Fetch metadata sau khi gửi tin nhắn. Timeout 10 giây.
   Future<void> _fetchMetadataLate(Chatmsgobject msg, String url) async {
     try {
       final metadata = await UrlMetadataFetcher.fetch(
@@ -378,9 +419,7 @@ class _ChatInputState extends State<ChatInput> {
       msg.descriptioneUrl = metadata.description;
       msg.ImageUrl = metadata.imageUrl;
     } catch (_) {
-      // Timeout hoặc lỗi → bỏ qua, không loading mãi
     } finally {
-      // ★ Luôn đánh dấu fetch xong (dù thành công hay thất bại)
       msg.isUrlFetchDone = true;
       widget.onRefreshMessages?.call();
     }
@@ -430,6 +469,15 @@ class _ChatInputState extends State<ChatInput> {
   Widget build(BuildContext context) {
     final showGallery = widget.showGallery && !_state.isEditing;
 
+    // ★ Khi đang thu âm → hiện overlay ghi âm thay cho input thường
+    if (_isRecording) {
+      return ChatVoiceRecordingOverlay(
+        controller: _voiceController,
+        onCancel: _onVoiceCancel,
+        onSend: _onVoiceSend,
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 26),
       decoration: BoxDecoration(
@@ -462,6 +510,7 @@ class _ChatInputState extends State<ChatInput> {
             onEmojiPressed: _onEmojiToggled,
             onGalleryPressed: _onGalleryToggled,
             onSendPressed: _onSendPressed,
+            onMicPressed: _onMicPressed, // ★
           ),
 
           if (widget.showEmoji)
@@ -487,7 +536,7 @@ class _ChatInputState extends State<ChatInput> {
 }
 
 // ═══════════════════════════════════════════════════════════
-// ★ Smart URL Preview — hiện khác nhau cho image/video/web
+// ★ Smart URL Preview
 // ═══════════════════════════════════════════════════════════
 
 class _SmartUrlPreview extends StatelessWidget {
@@ -514,7 +563,6 @@ class _SmartUrlPreview extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ──
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 4, 0),
             child: Row(
@@ -547,7 +595,6 @@ class _SmartUrlPreview extends StatelessWidget {
             ),
           ),
 
-          // ── Loading ──
           if (urlState.isFetching)
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
@@ -570,7 +617,6 @@ class _SmartUrlPreview extends StatelessWidget {
               ),
             ),
 
-          // ── ★ Image preview ──
           if (!urlState.isFetching &&
               urlState.contentType == UrlContentType.image)
             Padding(
@@ -609,7 +655,6 @@ class _SmartUrlPreview extends StatelessWidget {
               ),
             ),
 
-          // ── ★ Video preview ──
           if (!urlState.isFetching &&
               urlState.contentType == UrlContentType.video)
             Padding(
@@ -657,7 +702,6 @@ class _SmartUrlPreview extends StatelessWidget {
               ),
             ),
 
-          // ── ★ Web metadata preview ──
           if (!urlState.isFetching &&
               urlState.contentType == UrlContentType.web &&
               urlState.metadata != null) ...[
@@ -705,7 +749,6 @@ class _SmartUrlPreview extends StatelessWidget {
             ),
           ],
 
-          // ── Web loading (chưa có metadata) ──
           if (!urlState.isFetching &&
               urlState.contentType == UrlContentType.web &&
               urlState.metadata == null)
@@ -759,7 +802,7 @@ class _SmartUrlPreview extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════
-// Các widget con giữ nguyên
+// Các widget con
 // ═══════════════════════════════════════════════════════════
 
 class _InputRow extends StatelessWidget {
@@ -772,6 +815,7 @@ class _InputRow extends StatelessWidget {
   final VoidCallback onEmojiPressed;
   final VoidCallback onGalleryPressed;
   final VoidCallback onSendPressed;
+  final VoidCallback onMicPressed; // ★
 
   const _InputRow({
     required this.textController,
@@ -783,6 +827,7 @@ class _InputRow extends StatelessWidget {
     required this.onEmojiPressed,
     required this.onGalleryPressed,
     required this.onSendPressed,
+    required this.onMicPressed,
   });
 
   @override
@@ -823,7 +868,10 @@ class _InputRow extends StatelessWidget {
           )
         else ...[
           _IconBtn(icon: Icons.more_horiz, onPressed: () {}),
-          _IconBtn(icon: Icons.mic, onPressed: () {}),
+          _IconBtn(
+            icon: Icons.mic,
+            onPressed: onMicPressed, // ★ Gọi thu âm
+          ),
           _IconBtn(icon: Icons.image, onPressed: onGalleryPressed),
         ],
       ],
