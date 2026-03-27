@@ -15,6 +15,7 @@ class Chatpage extends StatefulWidget {
 class _ChatpageState extends State<Chatpage> {
   bool _showEmoji = false;
   bool _showGallery = false;
+  bool _showAttachMenu = false; // ★ NEW
   final _msgsNotifier = ValueNotifier<List<Chatmsgobject>>(
     List.from(Chatmsgobjects),
   );
@@ -24,6 +25,7 @@ class _ChatpageState extends State<Chatpage> {
     setState(() {
       _showEmoji = false;
       _showGallery = false;
+      _showAttachMenu = false; // ★
     });
   }
 
@@ -63,7 +65,6 @@ class _ChatpageState extends State<Chatpage> {
       resizeToAvoidBottomInset: true,
       body: Container(
         color: const Color(0xffE4E8F3),
-        // padding: EdgeInsets.symmetric(vertical: 20),
         child: Column(
           children: [
             Expanded(
@@ -128,8 +129,11 @@ class _ChatpageState extends State<Chatpage> {
             ChatInput(
               showEmoji: _showEmoji,
               showGallery: _showGallery,
+              showAttachMenu: _showAttachMenu, // ★ NEW
               onShowEmojiChanged: (v) => setState(() => _showEmoji = v),
               onShowGalleryChanged: (v) => setState(() => _showGallery = v),
+              onShowAttachMenuChanged: (v) =>
+                  setState(() => _showAttachMenu = v), // ★ NEW
               onSend: (msg) {
                 msg.replyMsg = _replyingMsg;
                 _msgsNotifier.value = [..._msgsNotifier.value, msg];
