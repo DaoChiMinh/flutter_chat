@@ -45,6 +45,9 @@ dependencies:
   photo_manager_image_provider: ^2.2.0
   image_picker: ^1.2.1
   http: ^1.6.0
+  record: ^6.2.0
+  audioplayers: ^6.6.0
+  path_provider: ^2.1.5
 
 
 
