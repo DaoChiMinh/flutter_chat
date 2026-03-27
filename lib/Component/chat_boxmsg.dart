@@ -121,8 +121,15 @@ class _MessageBubble extends StatelessWidget {
                         ChatMediaGrid(
                           files: msg.strDataFile,
                           type: ChatmsgObjtype.image,
-                          onTapItem: (path) => _openImagePath(context, path),
-                          onTapMore: () => _openImageGallery(context),
+                          onTapItem: (index) => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ChatImageGalleryPage(
+                                paths: msg.strDataFile,
+                                initialIndex: index,
+                              ),
+                            ),
+                          ),
                         ),
                       if (type == ChatmsgObjtype.stiker)
                         Image.network(msg.Note, height: 120),
@@ -130,9 +137,11 @@ class _MessageBubble extends StatelessWidget {
                         ChatMediaGrid(
                           files: msg.strDataFile,
                           type: ChatmsgObjtype.video,
-                          onTapItem: (path) => _openVideoPath(context, path),
+                          onTapItem: (index) {
+                            final path = msg.strDataFile[index];
+                            _openVideoPath(context, path);
+                          },
                         ),
-
                       if (_isFileType(type))
                         ChatMessageFile(
                           msg: msg,
@@ -380,10 +389,15 @@ class _MessageBubble extends StatelessWidget {
                   ),
                   onTap: () {
                     Navigator.pop(context);
-                    final path = msg.strDataFile.isNotEmpty
-                        ? msg.strDataFile.first
-                        : msg.file;
-                    _openImagePath(context, path);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatImageGalleryPage(
+                          paths: msg.strDataFile,
+                          initialIndex: 0,
+                        ),
+                      ),
+                    );
                   },
                 ),
               if (msg.objtype() == ChatmsgObjtype.video)
@@ -442,22 +456,357 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
+// class ChatMediaGrid extends StatelessWidget {
+//   final List<String> files;
+//   final ChatmsgObjtype type;
+//   final ValueChanged<String> onTapItem;
+//   final VoidCallback? onTapMore;
+
+//   const ChatMediaGrid({
+//     super.key,
+//     required this.files,
+//     required this.type,
+//     required this.onTapItem,
+//     this.onTapMore,
+//   });
+
+//   static const _gap = 2.0;
+//   static const _radius = 8.0;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     if (files.isEmpty) return const SizedBox.shrink();
+
+//     final count = files.length;
+//     final maxW = MediaQuery.of(context).size.width * 0.68;
+
+//     // ── 1 ảnh: full width ──
+//     if (count == 1) {
+//       return _item(
+//         files[0],
+//         maxW,
+//         maxW * 0.75,
+//         borderRadius: BorderRadius.circular(_radius),
+//       );
+//     }
+
+//     // ── 2 ảnh: ngang đều ──
+//     if (count == 2) {
+//       final w = (maxW - _gap) / 2;
+//       final h = w * 1.15;
+//       return Row(
+//         mainAxisSize: MainAxisSize.min,
+//         children: [
+//           _item(
+//             files[0],
+//             w,
+//             h,
+//             borderRadius: const BorderRadius.only(
+//               topLeft: Radius.circular(_radius),
+//               bottomLeft: Radius.circular(_radius),
+//             ),
+//           ),
+//           const SizedBox(width: _gap),
+//           _item(
+//             files[1],
+//             w,
+//             h,
+//             borderRadius: const BorderRadius.only(
+//               topRight: Radius.circular(_radius),
+//               bottomRight: Radius.circular(_radius),
+//             ),
+//           ),
+//         ],
+//       );
+//     }
+
+//     // ── 3 ảnh: 1 lớn bên trái + 2 nhỏ xếp dọc bên phải (Zalo style) ──
+//     if (count == 3) {
+//       final bigW = maxW * 0.6;
+//       final smallW = maxW - bigW - _gap;
+//       final totalH = maxW * 0.8;
+//       final smallH = (totalH - _gap) / 2;
+//       return Row(
+//         mainAxisSize: MainAxisSize.min,
+//         children: [
+//           _item(
+//             files[0],
+//             bigW,
+//             totalH,
+//             borderRadius: const BorderRadius.only(
+//               topLeft: Radius.circular(_radius),
+//               bottomLeft: Radius.circular(_radius),
+//             ),
+//           ),
+//           const SizedBox(width: _gap),
+//           Column(
+//             mainAxisSize: MainAxisSize.min,
+//             children: [
+//               _item(
+//                 files[1],
+//                 smallW,
+//                 smallH,
+//                 borderRadius: const BorderRadius.only(
+//                   topRight: Radius.circular(_radius),
+//                 ),
+//               ),
+//               const SizedBox(height: _gap),
+//               _item(
+//                 files[2],
+//                 smallW,
+//                 smallH,
+//                 borderRadius: const BorderRadius.only(
+//                   bottomRight: Radius.circular(_radius),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ],
+//       );
+//     }
+
+//     // ── 4 ảnh: grid 2×2 ──
+//     if (count == 4) {
+//       final cellW = (maxW - _gap) / 2;
+//       final cellH = cellW * 0.85;
+//       return Column(
+//         mainAxisSize: MainAxisSize.min,
+//         children: [
+//           Row(
+//             mainAxisSize: MainAxisSize.min,
+//             children: [
+//               _item(
+//                 files[0],
+//                 cellW,
+//                 cellH,
+//                 borderRadius: const BorderRadius.only(
+//                   topLeft: Radius.circular(_radius),
+//                 ),
+//               ),
+//               const SizedBox(width: _gap),
+//               _item(
+//                 files[1],
+//                 cellW,
+//                 cellH,
+//                 borderRadius: const BorderRadius.only(
+//                   topRight: Radius.circular(_radius),
+//                 ),
+//               ),
+//             ],
+//           ),
+//           const SizedBox(height: _gap),
+//           Row(
+//             mainAxisSize: MainAxisSize.min,
+//             children: [
+//               _item(
+//                 files[2],
+//                 cellW,
+//                 cellH,
+//                 borderRadius: const BorderRadius.only(
+//                   bottomLeft: Radius.circular(_radius),
+//                 ),
+//               ),
+//               const SizedBox(width: _gap),
+//               _item(
+//                 files[3],
+//                 cellW,
+//                 cellH,
+//                 borderRadius: const BorderRadius.only(
+//                   bottomRight: Radius.circular(_radius),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ],
+//       );
+//     }
+
+//     // ── 5+ ảnh: hiển thị 4 ảnh đầu, ảnh thứ 4 có overlay "+N" ──
+//     final remaining = count - 4;
+//     final cellW = (maxW - _gap) / 2;
+//     final cellH = cellW * 0.85;
+//     return Column(
+//       mainAxisSize: MainAxisSize.min,
+//       children: [
+//         Row(
+//           mainAxisSize: MainAxisSize.min,
+//           children: [
+//             _item(
+//               files[0],
+//               cellW,
+//               cellH,
+//               borderRadius: const BorderRadius.only(
+//                 topLeft: Radius.circular(_radius),
+//               ),
+//             ),
+//             const SizedBox(width: _gap),
+//             _item(
+//               files[1],
+//               cellW,
+//               cellH,
+//               borderRadius: const BorderRadius.only(
+//                 topRight: Radius.circular(_radius),
+//               ),
+//             ),
+//           ],
+//         ),
+//         const SizedBox(height: _gap),
+//         Row(
+//           mainAxisSize: MainAxisSize.min,
+//           children: [
+//             _item(
+//               files[2],
+//               cellW,
+//               cellH,
+//               borderRadius: const BorderRadius.only(
+//                 bottomLeft: Radius.circular(_radius),
+//               ),
+//             ),
+//             const SizedBox(width: _gap),
+//             _item(
+//               files[3],
+//               cellW,
+//               cellH,
+//               borderRadius: const BorderRadius.only(
+//                 bottomRight: Radius.circular(_radius),
+//               ),
+//               overlayCount: remaining,
+//             ),
+//           ],
+//         ),
+//       ],
+//     );
+//   }
+
+//   Widget _item(
+//     String path,
+//     double w,
+//     double h, {
+//     BorderRadius borderRadius = BorderRadius.zero,
+//     int overlayCount = 0,
+//   }) {
+//     return GestureDetector(
+//       onTap: () {
+//         if (overlayCount > 0 && onTapMore != null) {
+//           onTapMore!();
+//         } else {
+//           onTapItem(path);
+//         }
+//       },
+//       child: ClipRRect(
+//         borderRadius: borderRadius,
+//         child: SizedBox(
+//           width: w,
+//           height: h,
+//           child: Stack(
+//             fit: StackFit.expand,
+//             children: [
+//               type == ChatmsgObjtype.video
+//                   ? _buildVideoThumb()
+//                   : _buildImage(path),
+//               if (overlayCount > 0)
+//                 Container(
+//                   color: Colors.black.withOpacity(0.45),
+//                   alignment: Alignment.center,
+//                   child: Text(
+//                     '+$overlayCount',
+//                     style: const TextStyle(
+//                       color: Colors.white,
+//                       fontSize: 28,
+//                       fontWeight: FontWeight.w600,
+//                       letterSpacing: 1,
+//                     ),
+//                   ),
+//                 ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildImage(String path) {
+//     if (path.startsWith("http://") || path.startsWith("https://")) {
+//       return Image.network(
+//         path,
+//         fit: BoxFit.cover,
+//         errorBuilder: (_, _, _) => _fallback(),
+//       );
+//     }
+
+//     if (File(path).existsSync()) {
+//       return Image.file(
+//         File(path),
+//         fit: BoxFit.cover,
+//         errorBuilder: (_, _, _) => _fallback(),
+//       );
+//     }
+
+//     final bytes = _decodeBase64(path);
+//     if (bytes != null) {
+//       return Image.memory(
+//         bytes,
+//         fit: BoxFit.cover,
+//         errorBuilder: (_, _, _) => _fallback(),
+//       );
+//     }
+
+//     return _fallback();
+//   }
+
+//   Uint8List? _decodeBase64(String value) {
+//     try {
+//       final raw = value.contains(',') ? value.split(',').last : value;
+//       return base64Decode(raw);
+//     } catch (_) {
+//       return null;
+//     }
+//   }
+
+//   Widget _buildVideoThumb() {
+//     return Stack(
+//       fit: StackFit.expand,
+//       children: [
+//         Container(
+//           color: const Color(0xFFE8ECEF),
+//           alignment: Alignment.center,
+//           child: const Icon(Icons.videocam, color: Colors.grey, size: 30),
+//         ),
+//         Container(
+//           color: Colors.black26,
+//           alignment: Alignment.center,
+//           child: const Icon(
+//             Icons.play_circle_fill,
+//             color: Colors.white,
+//             size: 34,
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+
+//   Widget _fallback() {
+//     return Container(
+//       color: const Color(0xFFF1F3F5),
+//       alignment: Alignment.center,
+//       child: const Icon(Icons.broken_image, color: Colors.grey),
+//     );
+//   }
+// }
 class ChatMediaGrid extends StatelessWidget {
   final List<String> files;
   final ChatmsgObjtype type;
-  final ValueChanged<String> onTapItem;
-  final VoidCallback? onTapMore;
+  final ValueChanged<int> onTapItem; // ← ĐỔI: trả index thay vì path
 
   const ChatMediaGrid({
     super.key,
     required this.files,
     required this.type,
     required this.onTapItem,
-    this.onTapMore,
   });
 
   static const _gap = 2.0;
-  static const _radius = 8.0;
+  static const _radius = 10.0;
 
   @override
   Widget build(BuildContext context) {
@@ -466,25 +815,20 @@ class ChatMediaGrid extends StatelessWidget {
     final count = files.length;
     final maxW = MediaQuery.of(context).size.width * 0.68;
 
-    // ── 1 ảnh: full width ──
+    // ── 1 ảnh: full width, max height 180 ──
     if (count == 1) {
-      return _item(
-        files[0],
-        maxW,
-        maxW * 0.75,
-        borderRadius: BorderRadius.circular(_radius),
-      );
+      return _cell(0, maxW, 180, borderRadius: BorderRadius.circular(_radius));
     }
 
-    // ── 2 ảnh: ngang đều ──
+    // ── 2 ảnh: 2 cột ngang bằng nhau ──
     if (count == 2) {
       final w = (maxW - _gap) / 2;
-      final h = w * 1.15;
+      final h = w;
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _item(
-            files[0],
+          _cell(
+            0,
             w,
             h,
             borderRadius: const BorderRadius.only(
@@ -493,8 +837,8 @@ class ChatMediaGrid extends StatelessWidget {
             ),
           ),
           const SizedBox(width: _gap),
-          _item(
-            files[1],
+          _cell(
+            1,
             w,
             h,
             borderRadius: const BorderRadius.only(
@@ -506,17 +850,17 @@ class ChatMediaGrid extends StatelessWidget {
       );
     }
 
-    // ── 3 ảnh: 1 lớn bên trái + 2 nhỏ xếp dọc bên phải (Zalo style) ──
+    // ── 3 ảnh: Zalo style — 1 lớn trái + 2 nhỏ phải ──
     if (count == 3) {
       final bigW = maxW * 0.6;
       final smallW = maxW - bigW - _gap;
-      final totalH = maxW * 0.8;
+      final totalH = maxW * 0.75;
       final smallH = (totalH - _gap) / 2;
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _item(
-            files[0],
+          _cell(
+            0,
             bigW,
             totalH,
             borderRadius: const BorderRadius.only(
@@ -528,8 +872,8 @@ class ChatMediaGrid extends StatelessWidget {
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _item(
-                files[1],
+              _cell(
+                1,
                 smallW,
                 smallH,
                 borderRadius: const BorderRadius.only(
@@ -537,8 +881,8 @@ class ChatMediaGrid extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: _gap),
-              _item(
-                files[2],
+              _cell(
+                2,
                 smallW,
                 smallH,
                 borderRadius: const BorderRadius.only(
@@ -551,161 +895,98 @@ class ChatMediaGrid extends StatelessWidget {
       );
     }
 
-    // ── 4 ảnh: grid 2×2 ──
-    if (count == 4) {
-      final cellW = (maxW - _gap) / 2;
-      final cellH = cellW * 0.85;
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _item(
-                files[0],
-                cellW,
-                cellH,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(_radius),
-                ),
-              ),
-              const SizedBox(width: _gap),
-              _item(
-                files[1],
-                cellW,
-                cellH,
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(_radius),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: _gap),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _item(
-                files[2],
-                cellW,
-                cellH,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(_radius),
-                ),
-              ),
-              const SizedBox(width: _gap),
-              _item(
-                files[3],
-                cellW,
-                cellH,
-                borderRadius: const BorderRadius.only(
-                  bottomRight: Radius.circular(_radius),
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-    }
-
-    // ── 5+ ảnh: hiển thị 4 ảnh đầu, ảnh thứ 4 có overlay "+N" ──
-    final remaining = count - 4;
-    final cellW = (maxW - _gap) / 2;
-    final cellH = cellW * 0.85;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _item(
-              files[0],
-              cellW,
-              cellH,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(_radius),
-              ),
-            ),
-            const SizedBox(width: _gap),
-            _item(
-              files[1],
-              cellW,
-              cellH,
-              borderRadius: const BorderRadius.only(
-                topRight: Radius.circular(_radius),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: _gap),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _item(
-              files[2],
-              cellW,
-              cellH,
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(_radius),
-              ),
-            ),
-            const SizedBox(width: _gap),
-            _item(
-              files[3],
-              cellW,
-              cellH,
-              borderRadius: const BorderRadius.only(
-                bottomRight: Radius.circular(_radius),
-              ),
-              overlayCount: remaining,
-            ),
-          ],
-        ),
-      ],
-    );
+    // ── 4+ ảnh: dynamic grid, max 3/hàng ──
+    return _buildDynamicGrid(maxW);
   }
 
-  Widget _item(
-    String path,
+  // ────────────────────────────────────────────────────────
+  // Phân bổ ảnh vào các hàng, tối đa 3/hàng, đối xứng
+  // 4→[2,2]  5→[3,2]  6→[3,3]  7→[2,3,2]  8→[3,3,2]
+  // 9→[3,3,3]  10→[2,3,3,2]  11→[3,3,3,2]  12→[3,3,3,3]
+  // ────────────────────────────────────────────────────────
+  List<int> _distributeRows(int count) {
+    final numRows = (count + 2) ~/ 3; // ceil(count / 3)
+    final base = count ~/ numRows;
+    final extra = count % numRows;
+
+    final rows = List<int>.filled(numRows, base);
+
+    // Đặt phần dư vào giữa → layout đối xứng
+    final start = (numRows - extra) ~/ 2;
+    for (int i = 0; i < extra; i++) {
+      rows[start + i]++;
+    }
+
+    return rows;
+  }
+
+  Widget _buildDynamicGrid(double maxW) {
+    final rowSizes = _distributeRows(files.length);
+    final numRows = rowSizes.length;
+    const cellH = 120.0;
+
+    int fileIdx = 0;
+    final rowWidgets = <Widget>[];
+
+    for (int r = 0; r < numRows; r++) {
+      final cols = rowSizes[r];
+      final cellW = (maxW - _gap * (cols - 1)) / cols;
+
+      final cells = <Widget>[];
+      for (int c = 0; c < cols; c++) {
+        // Bo góc chỉ ở 4 góc ngoài cùng của grid
+        final isFirstRow = r == 0;
+        final isLastRow = r == numRows - 1;
+        final isFirstCol = c == 0;
+        final isLastCol = c == cols - 1;
+
+        final br = BorderRadius.only(
+          topLeft: isFirstRow && isFirstCol
+              ? const Radius.circular(_radius)
+              : Radius.zero,
+          topRight: isFirstRow && isLastCol
+              ? const Radius.circular(_radius)
+              : Radius.zero,
+          bottomLeft: isLastRow && isFirstCol
+              ? const Radius.circular(_radius)
+              : Radius.zero,
+          bottomRight: isLastRow && isLastCol
+              ? const Radius.circular(_radius)
+              : Radius.zero,
+        );
+
+        cells.add(_cell(fileIdx, cellW, cellH, borderRadius: br));
+        fileIdx++;
+
+        if (c < cols - 1) cells.add(const SizedBox(width: _gap));
+      }
+
+      rowWidgets.add(Row(mainAxisSize: MainAxisSize.min, children: cells));
+      if (r < numRows - 1) rowWidgets.add(const SizedBox(height: _gap));
+    }
+
+    return Column(mainAxisSize: MainAxisSize.min, children: rowWidgets);
+  }
+
+  // ────────────────────────────────────────────────────────
+  // Single cell
+  // ────────────────────────────────────────────────────────
+  Widget _cell(
+    int index,
     double w,
     double h, {
     BorderRadius borderRadius = BorderRadius.zero,
-    int overlayCount = 0,
   }) {
     return GestureDetector(
-      onTap: () {
-        if (overlayCount > 0 && onTapMore != null) {
-          onTapMore!();
-        } else {
-          onTapItem(path);
-        }
-      },
+      onTap: () => onTapItem(index),
       child: ClipRRect(
         borderRadius: borderRadius,
         child: SizedBox(
           width: w,
           height: h,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              type == ChatmsgObjtype.video
-                  ? _buildVideoThumb()
-                  : _buildImage(path),
-              if (overlayCount > 0)
-                Container(
-                  color: Colors.black.withOpacity(0.45),
-                  alignment: Alignment.center,
-                  child: Text(
-                    '+$overlayCount',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          child: type == ChatmsgObjtype.video
+              ? _buildVideoThumb()
+              : _buildImage(files[index]),
         ),
       ),
     );
@@ -716,7 +997,7 @@ class ChatMediaGrid extends StatelessWidget {
       return Image.network(
         path,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _fallback(),
+        errorBuilder: (_, __, ___) => _fallback(),
       );
     }
 
@@ -724,7 +1005,7 @@ class ChatMediaGrid extends StatelessWidget {
       return Image.file(
         File(path),
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _fallback(),
+        errorBuilder: (_, __, ___) => _fallback(),
       );
     }
 
@@ -733,7 +1014,7 @@ class ChatMediaGrid extends StatelessWidget {
       return Image.memory(
         bytes,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _fallback(),
+        errorBuilder: (_, __, ___) => _fallback(),
       );
     }
 
