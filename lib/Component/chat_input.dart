@@ -5,10 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
 
-// ============================================================
-// MODEL
-// ============================================================
-
 class ChatInputState {
   final bool isEditing;
   final List<AssetEntity> assets;
@@ -32,10 +28,6 @@ class ChatInputState {
     );
   }
 }
-
-// ============================================================
-// MAIN WIDGET
-// ============================================================
 
 class ChatInput extends StatefulWidget {
   const ChatInput({
@@ -257,10 +249,6 @@ class _ChatInputState extends State<ChatInput> {
   }
 }
 
-// ============================================================
-// SUB WIDGETS
-// ============================================================
-
 class _InputRow extends StatelessWidget {
   final TextEditingController textController;
   final FocusNode focusNode;
@@ -329,8 +317,6 @@ class _InputRow extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------
-
 class _GalleryGrid extends StatelessWidget {
   final List<AssetEntity> assets;
   final List<AssetEntity> selectedAssets;
@@ -395,8 +381,6 @@ class _GalleryGrid extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------
-
 class _CameraCell extends StatelessWidget {
   final VoidCallback onPressed;
 
@@ -427,8 +411,6 @@ class _CameraCell extends StatelessWidget {
     );
   }
 }
-
-// ----------------------------------------------------------
 
 class _AssetCell extends StatelessWidget {
   final AssetEntity asset;
@@ -505,8 +487,6 @@ class _SelectBadge extends StatelessWidget {
     );
   }
 }
-
-// ----------------------------------------------------------
 
 class _IconBtn extends StatelessWidget {
   final IconData icon;
