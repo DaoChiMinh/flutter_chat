@@ -108,13 +108,13 @@ class _ChatInputState extends State<ChatInput> {
     setState(() => _state = _state.copyWith(isEditing: newText.isNotEmpty));
   }
 
-  void _onStickerSelected(Sticker _sticker) {
+  void _onStickerSelected(Sticker sticker) {
     widget.onSend(
       Chatmsgobject()
         ..Comment = "minhdc"
         ..isMe = true
         ..Send_Date = DateTime.now()
-        ..Note = _sticker.url
+        ..Note = sticker.url
         ..strTypeFile = 'stiker',
     );
   }

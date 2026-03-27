@@ -716,7 +716,7 @@ class ChatMediaGrid extends StatelessWidget {
       return Image.network(
         path,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _fallback(),
+        errorBuilder: (_, _, _) => _fallback(),
       );
     }
 
@@ -724,7 +724,7 @@ class ChatMediaGrid extends StatelessWidget {
       return Image.file(
         File(path),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _fallback(),
+        errorBuilder: (_, _, _) => _fallback(),
       );
     }
 
@@ -733,7 +733,7 @@ class ChatMediaGrid extends StatelessWidget {
       return Image.memory(
         bytes,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _fallback(),
+        errorBuilder: (_, _, _) => _fallback(),
       );
     }
 
@@ -915,7 +915,7 @@ class _MediaGridItem extends StatelessWidget {
       return Image.network(
         path,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _fallback(Icons.broken_image),
+        errorBuilder: (_, _, _) => _fallback(Icons.broken_image),
       );
     }
 
@@ -923,7 +923,7 @@ class _MediaGridItem extends StatelessWidget {
       return Image.file(
         File(path),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _fallback(Icons.broken_image),
+        errorBuilder: (_, _, _) => _fallback(Icons.broken_image),
       );
     }
 
@@ -1095,13 +1095,13 @@ class ChatMessageImage extends StatelessWidget {
         data,
         fit: BoxFit.cover,
         height: 200,
-        errorBuilder: (_, __, ___) => _buildError(),
+        errorBuilder: (_, _, _) => _buildError(),
       );
     } else if (File(data).existsSync()) {
       child = Image.file(
         File(data),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildError(),
+        errorBuilder: (_, _, _) => _buildError(),
       );
     } else if (_isBase64) {
       final bytes = _decodeBase64(data);
@@ -1110,7 +1110,7 @@ class ChatMessageImage extends StatelessWidget {
           : Image.memory(
               bytes,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _buildError(),
+              errorBuilder: (_, _, _) => _buildError(),
             );
     } else {
       child = _buildError();
@@ -1373,7 +1373,7 @@ class ChatMessageVideo extends StatelessWidget {
                   ? Image(
                       image: thumbnail!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _fallback(),
+                      errorBuilder: (_, _, _) => _fallback(),
                     )
                   : _fallback(),
             ),
