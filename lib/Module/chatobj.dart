@@ -34,6 +34,10 @@ class Chatmsgobject {
   double uploadProgress = 0;
   String status = ""; // sent, received, read
 
+  String? ImageUrl; // đường link ảnh của ChatmsgObjtype Url
+  String? titleUrl;
+  String? descriptioneUrl;
+
   ChatmsgObjtype objtype() {
     if (strTypeFile.isEmpty) return ChatmsgObjtype.tex;
 
