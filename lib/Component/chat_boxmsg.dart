@@ -5,6 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_chat/Component/chat_audio.dart';
+import 'package:flutter_chat/Component/chat_message_action_menu.dart';
 import 'package:flutter_chat/Component/chat_url_preview.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
 import 'package:open_filex/open_filex.dart';
@@ -424,90 +425,31 @@ class _MessageBubble extends StatelessWidget {
     }
   }
 
-  Future<void> _showMessageActions(BuildContext context) async {
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) {
-        return SafeArea(
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.reply),
-                title: const Text(
-                  "Trả lời",
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                onTap: () => Navigator.pop(context, "reply"),
-              ),
-              ListTile(
-                leading: const Icon(Icons.copy),
-                title: const Text(
-                  "Sao chép nội dung",
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                iconColor: Colors.blueGrey,
-                onTap: () async {
-                  Navigator.pop(context, "copy");
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  msg.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                ),
-                title: Text(
-                  msg.isPinned ? "Bỏ ghim" : "Ghim",
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
-                iconColor: Colors.cyan,
-                onTap: () => Navigator.pop(context, "pin"),
-              ),
-              if (msg.isMe && !msg.isRecalled)
-                ListTile(
-                  leading: const Icon(Icons.undo),
-                  iconColor: Colors.orange,
-                  title: const Text(
-                    "Thu hồi",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  onTap: () => Navigator.pop(context, "recall"),
-                ),
-              ListTile(
-                leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title: const Text(
-                  "Xóa",
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                onTap: () => Navigator.pop(context, "delete"),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+  void _showMessageActions(BuildContext context) async {
+    final result = await showChatMessageActionMenu(context, msg: msg);
+    if (result == null || !context.mounted) return;
 
-    switch (action) {
-      case "reply":
-        onReply?.call(msg);
+    switch (result.type) {
+      case 'reaction':
+        // Xử lý reaction: result.reactionEmoji
         break;
-      case "recall":
-        onRecall?.call(msg);
-        break;
-      case "delete":
-        onDelete?.call(msg);
-        break;
-      case "copy":
+      case 'copy':
         await Clipboard.setData(ClipboardData(text: msg.Note));
-        _showSnackBar(context, "Đã sao chép nội dung");
+        _showSnackBar(context, 'Đã sao chép');
         break;
-      case "pin":
+      case 'pin':
         msg.isPinned = !msg.isPinned;
-        _showSnackBar(context, msg.isPinned ? "Đã ghim" : "Đã bỏ ghim");
+        _showSnackBar(context, msg.isPinned ? 'Đã ghim' : 'Đã bỏ ghim');
+        break;
+      case 'reply':
+      case 'forward':
+      case 'recall':
+      case 'delete':
+        // Callback lên parent xử lý
         break;
     }
   }
 }
-
 // ═══════════════════════════════════════════════════════════
 // ★ ChatMessageUrl — Rich Link Preview giống Zalo
 // ═══════════════════════════════════════════════════════════
