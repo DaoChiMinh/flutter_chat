@@ -36,12 +36,16 @@ class Chatmsgobject {
   String? titleUrl; // tiêu đề trang web
   String? descriptioneUrl; // mô tả trang web
 
-  /// Flag nội bộ: đánh dấu đây là cập nhật metadata, không phải tin nhắn mới
-  bool isMetadataUpdate = false;
+  /// Đánh dấu đã fetch xong (thành công hoặc thất bại) → ẩn loading
+  bool isUrlFetchDone = false;
 
   /// Kiểm tra đã có metadata preview chưa
   bool get hasUrlPreview =>
       titleUrl != null || descriptioneUrl != null || ImageUrl != null;
+
+  /// Còn đang loading preview không?
+  /// false khi: đã fetch xong HOẶC đã có metadata
+  bool get isUrlLoading => !isUrlFetchDone && !hasUrlPreview;
 
   ChatmsgObjtype objtype() {
     if (strTypeFile.isEmpty) return ChatmsgObjtype.tex;
@@ -71,7 +75,6 @@ class Chatmsgobject {
 
 enum ChatmsgObjtype { tex, image, video, pdf, doc, excel, file, url, stiker }
 
-// viết class menu
 class ChatMenu {
   List<ChatItemMenu>? ChatItemMenus;
 }

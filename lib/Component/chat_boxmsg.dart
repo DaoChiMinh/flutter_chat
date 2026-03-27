@@ -56,6 +56,8 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final type = msg.objtype();
 
+    // Kiểm tra xem tin nhắn URL có kèm text riêng không
+    // Ví dụ: "trang web này hay https://dantri.com" → extraText = "trang web này hay"
     final extraText = type == ChatmsgObjtype.url ? _getExtraText(msg) : '';
 
     return GestureDetector(
@@ -103,7 +105,6 @@ class _MessageBubble extends StatelessWidget {
                                           ).withOpacity(0.5)
                                         : Colors.white)
                                   : Colors.transparent)),
-
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(16),
                     topRight: const Radius.circular(16),
@@ -600,8 +601,8 @@ class ChatMessageUrl extends StatelessWidget {
                       ),
                     ),
 
-                  // ── Loading khi chưa có metadata ──
-                  if (!msg.hasUrlPreview)
+                  // ── Loading khi đang fetch metadata (tối đa 10 giây) ──
+                  if (msg.isUrlLoading)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Row(

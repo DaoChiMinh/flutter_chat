@@ -131,31 +131,43 @@ class _ChatInputState extends State<ChatInput> {
       return;
     }
 
-    // ── Bước 2: URL không rõ extension → detect song song ──
+    // ── Bước 2: URL không rõ extension → detect song song (timeout 10s) ──
     setState(() {
       _urlState = _UrlDetectState(url: url, isFetching: true);
     });
 
-    // Detect type + fetch metadata song song
-    final results = await Future.wait([
-      UrlMetadataFetcher.detectType(url),
-      UrlMetadataFetcher.fetch(url),
-    ]);
+    try {
+      // Detect type + fetch metadata song song, timeout 10 giây
+      final results = await Future.wait([
+        UrlMetadataFetcher.detectType(url),
+        UrlMetadataFetcher.fetch(url),
+      ]).timeout(const Duration(seconds: 10));
 
-    if (!mounted || _urlState?.url != url) return;
+      if (!mounted || _urlState?.url != url) return;
 
-    final typeResult = results[0] as UrlTypeResult;
-    final metadata = results[1] as UrlMetadata;
+      final typeResult = results[0] as UrlTypeResult;
+      final metadata = results[1] as UrlMetadata;
 
-    setState(() {
-      _urlState = _UrlDetectState(
-        url: url,
-        contentType: typeResult.type,
-        typeResult: typeResult,
-        metadata: typeResult.type == UrlContentType.web ? metadata : null,
-        isFetching: false,
-      );
-    });
+      setState(() {
+        _urlState = _UrlDetectState(
+          url: url,
+          contentType: typeResult.type,
+          typeResult: typeResult,
+          metadata: typeResult.type == UrlContentType.web ? metadata : null,
+          isFetching: false,
+        );
+      });
+    } catch (_) {
+      // Timeout hoặc lỗi → dừng loading, hiện mặc định web
+      if (!mounted || _urlState?.url != url) return;
+      setState(() {
+        _urlState = _UrlDetectState(
+          url: url,
+          contentType: UrlContentType.web,
+          isFetching: false,
+        );
+      });
+    }
   }
 
   // ----------------------------------------------------------
@@ -332,12 +344,13 @@ class _ChatInputState extends State<ChatInput> {
       msg.titleUrl = _urlState!.metadata!.title;
       msg.descriptioneUrl = _urlState!.metadata!.description;
       msg.ImageUrl = _urlState!.metadata!.imageUrl;
+      msg.isUrlFetchDone = true; // ★ đã có metadata → không loading
     }
 
     widget.onSend(msg);
 
-    // Nếu chưa có metadata → fetch async
-    if (_urlState?.metadata == null) {
+    // Nếu chưa có metadata → fetch async (timeout 10s)
+    if (!msg.isUrlFetchDone) {
       _fetchMetadataLate(msg, url);
     }
   }
@@ -355,14 +368,22 @@ class _ChatInputState extends State<ChatInput> {
     return result.trim();
   }
 
+  /// Fetch metadata sau khi gửi tin nhắn. Timeout 10 giây.
   Future<void> _fetchMetadataLate(Chatmsgobject msg, String url) async {
     try {
-      final metadata = await UrlMetadataFetcher.fetch(url);
+      final metadata = await UrlMetadataFetcher.fetch(
+        url,
+      ).timeout(const Duration(seconds: 10));
       msg.titleUrl = metadata.title;
       msg.descriptioneUrl = metadata.description;
       msg.ImageUrl = metadata.imageUrl;
+    } catch (_) {
+      // Timeout hoặc lỗi → bỏ qua, không loading mãi
+    } finally {
+      // ★ Luôn đánh dấu fetch xong (dù thành công hay thất bại)
+      msg.isUrlFetchDone = true;
       widget.onRefreshMessages?.call();
-    } catch (_) {}
+    }
   }
 
   Future<void> _onSendImages() async {
