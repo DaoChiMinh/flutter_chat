@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_chat/Component/chat_audio.dart';
+import 'package:flutter_chat/Component/chat_attach_menu.dart';
 import 'package:flutter_chat/Component/chat_emoji.dart';
 import 'package:flutter_chat/Component/chat_url_preview.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
@@ -35,9 +36,9 @@ class ChatInputState {
 /// Trạng thái preview URL đang detect
 class _UrlDetectState {
   final String url;
-  final UrlContentType? contentType; // null = đang detect
+  final UrlContentType? contentType;
   final UrlTypeResult? typeResult;
-  final UrlMetadata? metadata; // chỉ cho web
+  final UrlMetadata? metadata;
   final bool isFetching;
 
   const _UrlDetectState({
@@ -55,8 +56,10 @@ class ChatInput extends StatefulWidget {
     required this.onSend,
     required this.showEmoji,
     required this.showGallery,
+    required this.showAttachMenu, // ★ NEW
     required this.onShowEmojiChanged,
     required this.onShowGalleryChanged,
+    required this.onShowAttachMenuChanged, // ★ NEW
     this.onRefreshMessages,
   });
 
@@ -64,8 +67,10 @@ class ChatInput extends StatefulWidget {
   final VoidCallback? onRefreshMessages;
   final bool showEmoji;
   final bool showGallery;
+  final bool showAttachMenu; // ★ NEW
   final ValueChanged<bool> onShowEmojiChanged;
   final ValueChanged<bool> onShowGalleryChanged;
+  final ValueChanged<bool> onShowAttachMenuChanged; // ★ NEW
 
   @override
   State<ChatInput> createState() => _ChatInputState();
@@ -80,7 +85,7 @@ class _ChatInputState extends State<ChatInput> {
   _UrlDetectState? _urlState;
   Timer? _urlDetectTimer;
 
-  // ── ★ Voice recording state ──
+  // ── Voice recording state ──
   final _voiceController = VoiceRecorderController();
   bool _isRecording = false;
 
@@ -110,9 +115,7 @@ class _ChatInputState extends State<ChatInput> {
     final url = UrlMetadataFetcher.extractFirstUrl(text);
 
     if (url == null) {
-      if (_urlState != null) {
-        setState(() => _urlState = null);
-      }
+      if (_urlState != null) setState(() => _urlState = null);
       return;
     }
 
@@ -170,17 +173,32 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   // ----------------------------------------------------------
-  // Emoji & Gallery
+  // Panel management
   // ----------------------------------------------------------
 
-  void _onTextFieldTapped() {
+  void _closeAllPanels() {
     widget.onShowEmojiChanged(false);
     widget.onShowGalleryChanged(false);
+    widget.onShowAttachMenuChanged(false);
+  }
+
+  void _onTextFieldTapped() {
+    _closeAllPanels();
   }
 
   void _onEmojiToggled() {
     final willShow = !widget.showEmoji;
     widget.onShowEmojiChanged(willShow);
+    widget.onShowGalleryChanged(false);
+    widget.onShowAttachMenuChanged(false);
+    if (willShow) _focusNode.unfocus();
+  }
+
+  // ★ Attach menu toggle — giống emoji/gallery pattern
+  void _onAttachMenuToggled() {
+    final willShow = !widget.showAttachMenu;
+    widget.onShowAttachMenuChanged(willShow);
+    widget.onShowEmojiChanged(false);
     widget.onShowGalleryChanged(false);
     if (willShow) _focusNode.unfocus();
   }
@@ -216,6 +234,7 @@ class _ChatInputState extends State<ChatInput> {
     if (willShow && _state.assets.isEmpty) await _loadPhotos();
     widget.onShowGalleryChanged(willShow);
     widget.onShowEmojiChanged(false);
+    widget.onShowAttachMenuChanged(false);
     if (willShow) _focusNode.unfocus();
   }
 
@@ -235,15 +254,13 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   // ----------------------------------------------------------
-  // ★ Voice Recording
+  // Voice Recording
   // ----------------------------------------------------------
 
   Future<void> _onMicPressed() async {
-    if (_isRecording) return; // đang thu thì không làm gì
+    if (_isRecording) return;
 
-    // Đóng emoji/gallery
-    widget.onShowEmojiChanged(false);
-    widget.onShowGalleryChanged(false);
+    _closeAllPanels();
     _focusNode.unfocus();
 
     final ok = await _voiceController.start();
@@ -268,17 +285,15 @@ class _ChatInputState extends State<ChatInput> {
 
     if (result == null) return;
 
-    // Gửi tin nhắn audio với base64 data
     widget.onSend(
       Chatmsgobject()
         ..Comment = "minhdc"
         ..isMe = true
         ..Send_Date = DateTime.now()
-        ..strDataFile =
-            [result.base64Data] // base64 audio data
+        ..strDataFile = [result.base64Data]
         ..strTypeFile = 'voice'
         ..audioDurationSeconds = result.durationSeconds
-        ..Note = '', // không có text
+        ..Note = '',
     );
   }
 
@@ -288,7 +303,7 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   // ----------------------------------------------------------
-  // ★ SMART SEND
+  // SMART SEND
   // ----------------------------------------------------------
 
   void _onSendPressed() {
@@ -333,9 +348,7 @@ class _ChatInputState extends State<ChatInput> {
     final imgUrls = <String>[];
     for (final url in imageUrls) {
       final result = UrlMetadataFetcher.detectByExtension(url);
-      if (result.type == UrlContentType.image) {
-        imgUrls.add(url);
-      }
+      if (result.type == UrlContentType.image) imgUrls.add(url);
     }
     if (imgUrls.isEmpty) imgUrls.addAll(imageUrls);
 
@@ -356,9 +369,7 @@ class _ChatInputState extends State<ChatInput> {
     final vidUrls = <String>[];
     for (final url in videoUrls) {
       final result = UrlMetadataFetcher.detectByExtension(url);
-      if (result.type == UrlContentType.video) {
-        vidUrls.add(url);
-      }
+      if (result.type == UrlContentType.video) vidUrls.add(url);
     }
     if (vidUrls.isEmpty) vidUrls.addAll(videoUrls);
 
@@ -468,8 +479,9 @@ class _ChatInputState extends State<ChatInput> {
   @override
   Widget build(BuildContext context) {
     final showGallery = widget.showGallery && !_state.isEditing;
+    final showAttachMenu = widget.showAttachMenu && !_state.isEditing;
 
-    // ★ Khi đang thu âm → hiện overlay ghi âm thay cho input thường
+    // Khi đang thu âm → hiện overlay ghi âm
     if (_isRecording) {
       return ChatVoiceRecordingOverlay(
         controller: _voiceController,
@@ -494,12 +506,14 @@ class _ChatInputState extends State<ChatInput> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── ★ Smart URL Preview Card ──
+          // ── Smart URL Preview Card ──
           if (_urlState != null)
             _SmartUrlPreview(
               urlState: _urlState!,
               onDismiss: () => setState(() => _urlState = null),
             ),
+
+          // ── Input Row ──
           _InputRow(
             textController: _textController,
             focusNode: _focusNode,
@@ -510,9 +524,11 @@ class _ChatInputState extends State<ChatInput> {
             onEmojiPressed: _onEmojiToggled,
             onGalleryPressed: _onGalleryToggled,
             onSendPressed: _onSendPressed,
-            onMicPressed: _onMicPressed, // ★
+            onMicPressed: _onMicPressed,
+            onAttachMenuPressed: _onAttachMenuToggled, // ★
           ),
 
+          // ── Emoji Panel ──
           if (widget.showEmoji)
             SizedBox(
               height: 300,
@@ -521,6 +537,8 @@ class _ChatInputState extends State<ChatInput> {
                 onStickerSelected: _onStickerSelected,
               ),
             ),
+
+          // ── Gallery Panel ──
           if (showGallery)
             _GalleryGrid(
               assets: _state.assets,
@@ -529,6 +547,9 @@ class _ChatInputState extends State<ChatInput> {
               onCameraPressed: _onCameraPressed,
               onConfirm: _onSendImages,
             ),
+
+          // ── ★ Attach Menu Panel (Zalo-style grid) ──
+          if (showAttachMenu) ChatAttachMenuPanel(onSend: widget.onSend),
         ],
       ),
     );
@@ -594,7 +615,6 @@ class _SmartUrlPreview extends StatelessWidget {
               ],
             ),
           ),
-
           if (urlState.isFetching)
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
@@ -616,7 +636,6 @@ class _SmartUrlPreview extends StatelessWidget {
                 ],
               ),
             ),
-
           if (!urlState.isFetching &&
               urlState.contentType == UrlContentType.image)
             Padding(
@@ -654,7 +673,6 @@ class _SmartUrlPreview extends StatelessWidget {
                 ),
               ),
             ),
-
           if (!urlState.isFetching &&
               urlState.contentType == UrlContentType.video)
             Padding(
@@ -701,7 +719,6 @@ class _SmartUrlPreview extends StatelessWidget {
                 ),
               ),
             ),
-
           if (!urlState.isFetching &&
               urlState.contentType == UrlContentType.web &&
               urlState.metadata != null) ...[
@@ -748,7 +765,6 @@ class _SmartUrlPreview extends StatelessWidget {
               ),
             ),
           ],
-
           if (!urlState.isFetching &&
               urlState.contentType == UrlContentType.web &&
               urlState.metadata == null)
@@ -815,7 +831,8 @@ class _InputRow extends StatelessWidget {
   final VoidCallback onEmojiPressed;
   final VoidCallback onGalleryPressed;
   final VoidCallback onSendPressed;
-  final VoidCallback onMicPressed; // ★
+  final VoidCallback onMicPressed;
+  final VoidCallback onAttachMenuPressed; // ★
 
   const _InputRow({
     required this.textController,
@@ -828,6 +845,7 @@ class _InputRow extends StatelessWidget {
     required this.onGalleryPressed,
     required this.onSendPressed,
     required this.onMicPressed,
+    required this.onAttachMenuPressed,
   });
 
   @override
@@ -867,11 +885,9 @@ class _InputRow extends StatelessWidget {
             onPressed: onSendPressed,
           )
         else ...[
-          _IconBtn(icon: Icons.attach_file_rounded, onPressed: () {}),
-          _IconBtn(
-            icon: Icons.mic,
-            onPressed: onMicPressed, // ★ Gọi thu âm
-          ),
+          // ★ Nút ••• (more) — giống Zalo
+          _IconBtn(icon: Icons.more_horiz, onPressed: onAttachMenuPressed),
+          _IconBtn(icon: Icons.mic, onPressed: onMicPressed),
           _IconBtn(icon: Icons.image, onPressed: onGalleryPressed),
         ],
       ],
