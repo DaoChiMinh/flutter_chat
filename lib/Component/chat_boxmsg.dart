@@ -872,28 +872,6 @@ class ChatMediaGrid extends StatelessWidget {
     }
   }
 
-  // Widget _buildVideoThumb() {
-  //   return Stack(
-  //     fit: StackFit.expand,
-  //     children: [
-  //       Container(
-  //         color: const Color(0xFFE8ECEF),
-  //         alignment: Alignment.center,
-  //         child: const Icon(Icons.videocam, color: Colors.grey, size: 30),
-  //       ),
-  //       Container(
-  //         color: Colors.black26,
-  //         alignment: Alignment.center,
-  //         child: const Icon(
-  //           Icons.play_circle_fill,
-  //           color: Colors.white,
-  //           size: 34,
-  //         ),
-  //       ),
-  //     ],
-  //   );
-  // }
-
   Widget _fallback() {
     return Container(
       color: const Color(0xFFF1F3F5),
@@ -1955,7 +1933,14 @@ class _ReplyPreview extends StatelessWidget {
 
       case ChatmsgObjtype.video:
         return _replyMediaPreview(
-          child: _buildVideoThumb(reply.file),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black12,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            alignment: Alignment.center,
+            child: const Icon(Icons.videocam, color: Colors.grey, size: 18),
+          ),
           text: reply.Note.isNotEmpty ? reply.Note : "Video",
         );
 
@@ -2089,24 +2074,6 @@ class _ReplyPreview extends StatelessWidget {
         alignment: Alignment.center,
         child: const Icon(Icons.image),
       ),
-    );
-  }
-
-  Widget _buildVideoThumb(String path) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        _buildImageThumb(path), // nếu bạn đã có thumbnail thật thì thay vào đây
-        Container(
-          color: Colors.black26,
-          alignment: Alignment.center,
-          child: const Icon(
-            Icons.play_circle_fill,
-            color: Colors.white,
-            size: 20,
-          ),
-        ),
-      ],
     );
   }
 }

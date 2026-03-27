@@ -32,16 +32,18 @@ class _ChatpageState extends State<Chatpage> {
   }
 
   void _scrollToMessage(String idMsg) {
-    final key = _messageKeys[idMsg];
-    final ctx = key?.currentContext;
-    if (ctx == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final key = _messageKeys[idMsg];
+      final ctx = key?.currentContext;
+      if (ctx == null) return;
 
-    Scrollable.ensureVisible(
-      ctx,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      alignment: 0.2,
-    );
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        alignment: 0.2,
+      );
+    });
   }
 
   void _handleReply(Chatmsgobject msg) {
@@ -144,6 +146,14 @@ class _ChatpageState extends State<Chatpage> {
                   _replyingMsg = null; // gửi xong ẩn ô reply
                 });
                 CloseAll();
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!_scrollController.hasClients) return;
+                  _scrollController.animateTo(
+                    0,
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
+                  );
+                });
               },
             ),
           ],
