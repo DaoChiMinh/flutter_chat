@@ -4,3 +4,4 @@ export 'Component/chat_input.dart';
 export 'Component/chat_url_preview.dart';
 export 'Module/chatdata.dart';
 export 'Component/chat_attach_menu.dart';
+export 'Component/chat_message_action_menu.dart';
