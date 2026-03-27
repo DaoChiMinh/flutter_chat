@@ -19,12 +19,18 @@ class ChatMessage extends StatefulWidget {
   final ValueChanged<Chatmsgobject>? onReply;
   final ValueChanged<Chatmsgobject>? onRecall;
   final ValueChanged<Chatmsgobject>? onDelete;
+  final ValueChanged<String>? onTapReplyPreview;
+  final ScrollController? scrollController;
+  final Map<String, GlobalKey>? messageKeys;
   const ChatMessage({
     super.key,
     required this.msgs,
     this.onReply,
     this.onRecall,
     this.onDelete,
+    this.onTapReplyPreview,
+    this.scrollController,
+    this.messageKeys,
   });
 
   @override
@@ -44,17 +50,27 @@ class _ChatMessageState extends State<ChatMessage> {
     }
 
     return ListView.builder(
+      controller: widget.scrollController,
       reverse: true,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       itemCount: widget.msgs.length,
       itemBuilder: (context, index) {
         final msg = widget.msgs[widget.msgs.length - 1 - index];
-        return _MessageBubble(
-          key: ValueKey(msg.IdMsg),
-          msg: msg,
-          onReply: widget.onReply,
-          onRecall: widget.onRecall,
-          onDelete: widget.onDelete,
+        final itemKey = widget.messageKeys?.putIfAbsent(
+          msg.IdMsg,
+          () => GlobalKey(),
+        );
+
+        return Container(
+          key: itemKey,
+          child: _MessageBubble(
+            key: ValueKey(msg.IdMsg),
+            msg: msg,
+            onReply: widget.onReply,
+            onRecall: widget.onRecall,
+            onDelete: widget.onDelete,
+            onTapReplyPreview: widget.onTapReplyPreview,
+          ),
         );
       },
     );
@@ -66,6 +82,7 @@ class _MessageBubble extends StatelessWidget {
   final ValueChanged<Chatmsgobject>? onReply;
   final ValueChanged<Chatmsgobject>? onRecall;
   final ValueChanged<Chatmsgobject>? onDelete;
+  final ValueChanged<String>? onTapReplyPreview;
 
   const _MessageBubble({
     super.key,
@@ -73,6 +90,7 @@ class _MessageBubble extends StatelessWidget {
     this.onDelete,
     this.onRecall,
     this.onReply,
+    this.onTapReplyPreview,
   });
 
   @override
@@ -186,7 +204,11 @@ class _MessageBubble extends StatelessWidget {
                       if (msg.replyMsg != null)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8),
-                          child: _ReplyPreview(reply: msg.replyMsg!),
+                          child: _ReplyPreview(
+                            reply: msg.replyMsg!,
+                            onTap: () =>
+                                onTapReplyPreview?.call(msg.replyMsg!.IdMsg),
+                          ),
                         ),
                       // ── Image grid ──
                       if (type == ChatmsgObjtype.image)
@@ -442,10 +464,14 @@ class _MessageBubble extends StatelessWidget {
         _showSnackBar(context, msg.isPinned ? 'Đã ghim' : 'Đã bỏ ghim');
         break;
       case 'reply':
+        onReply?.call(msg);
+        break;
       case 'forward':
       case 'recall':
+        onRecall?.call(msg);
+        break;
       case 'delete':
-        // Callback lên parent xử lý
+        onDelete?.call(msg);
         break;
     }
   }
@@ -1872,7 +1898,7 @@ class _ReplyPreview extends StatelessWidget {
           children: [
             Container(
               width: 3,
-              height: 42,
+              height: 45,
               decoration: BoxDecoration(
                 color: reply.isMe ? Colors.green : Colors.blue,
                 borderRadius: BorderRadius.circular(2),
@@ -1881,21 +1907,27 @@ class _ReplyPreview extends StatelessWidget {
             const SizedBox(width: 8),
 
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    reply.isMe ? "Bạn" : reply.Comment,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
+              child: SizedBox(
+                height: 50,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      reply.isMe ? "Bạn" : reply.Comment,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  _buildReplyContent(type),
-                ],
+                    const SizedBox(height: 4),
+                    Flexible(
+                      // QUAN TRỌNG NHẤT
+                      child: _buildReplyContent(type),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -1949,90 +1981,99 @@ class _ReplyPreview extends StatelessWidget {
       default:
         return Text(
           reply.Note.isNotEmpty ? reply.Note : "Tin nhắn",
-          maxLines: 2,
+          style: TextStyle(color: Colors.blueGrey),
+          maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12, color: Colors.black54),
         );
     }
   }
 
   Widget _replyMediaPreview({required Widget child, required String text}) {
-    return Row(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: SizedBox(width: 42, height: 42, child: child),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+    return SizedBox(
+      height: 40,
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(width: 30, height: 36, child: child),
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _replyFilePreview(String path) {
     final fileName = path.split('/').last;
 
-    return Row(
-      children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(6),
+    return SizedBox(
+      height: 40,
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            alignment: Alignment.center,
+            child: const Icon(Icons.insert_drive_file, size: 20),
           ),
-          alignment: Alignment.center,
-          child: const Icon(Icons.insert_drive_file, size: 22),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            fileName,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              fileName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _replyLinkPreview() {
-    return Row(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: SizedBox(
-            width: 42,
-            height: 42,
-            child: reply.ImageUrl != null && reply.ImageUrl!.isNotEmpty
-                ? Image.network(reply.ImageUrl!, fit: BoxFit.cover)
-                : Container(
-                    color: Colors.white.withOpacity(0.15),
-                    alignment: Alignment.center,
-                    child: const Icon(Icons.link),
-                  ),
+    return SizedBox(
+      height: 40,
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: reply.ImageUrl != null && reply.ImageUrl!.isNotEmpty
+                  ? Image.network(reply.ImageUrl!, fit: BoxFit.cover)
+                  : Container(
+                      color: Colors.white.withOpacity(0.15),
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.link),
+                    ),
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            reply.titleUrl?.isNotEmpty == true
-                ? reply.titleUrl!
-                : (reply.file.isNotEmpty ? reply.file : "Liên kết"),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              reply.titleUrl?.isNotEmpty == true
+                  ? reply.titleUrl!
+                  : (reply.file.isNotEmpty ? reply.file : "Liên kết"),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

@@ -16,6 +16,8 @@ class _ChatpageState extends State<Chatpage> {
   bool _showEmoji = false;
   bool _showGallery = false;
   bool _showAttachMenu = false; // ★ NEW
+  final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _messageKeys = {};
   final _msgsNotifier = ValueNotifier<List<Chatmsgobject>>(
     List.from(Chatmsgobjects),
   );
@@ -27,6 +29,19 @@ class _ChatpageState extends State<Chatpage> {
       _showGallery = false;
       _showAttachMenu = false; // ★
     });
+  }
+
+  void _scrollToMessage(String idMsg) {
+    final key = _messageKeys[idMsg];
+    final ctx = key?.currentContext;
+    if (ctx == null) return;
+
+    Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      alignment: 0.2,
+    );
   }
 
   void _handleReply(Chatmsgobject msg) {
@@ -82,6 +97,9 @@ class _ChatpageState extends State<Chatpage> {
                       onReply: _handleReply,
                       onRecall: _handleRecall,
                       onDelete: _handleDelete,
+                      onTapReplyPreview: _scrollToMessage,
+                      scrollController: _scrollController,
+                      messageKeys: _messageKeys,
                     );
                   },
                 ),
@@ -99,26 +117,9 @@ class _ChatpageState extends State<Chatpage> {
                 ),
                 child: Row(
                   children: [
-                    Container(width: 3, height: 36, color: Colors.blue),
+                    Container(width: 3, height: 40, color: Colors.blue),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _replyingMsg!.isMe ? "Bạn" : _replyingMsg!.Comment,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          Text(
-                            _replyingMsg!.Note.isNotEmpty
-                                ? _replyingMsg!.Note
-                                : "[File] ${_replyingMsg!.file.split('/').last}",
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
+                    Expanded(child: ReplyInputPreview(msg: _replyingMsg!)),
                     IconButton(
                       onPressed: () => setState(() => _replyingMsg = null),
                       icon: const Icon(Icons.close),
@@ -135,6 +136,8 @@ class _ChatpageState extends State<Chatpage> {
               onShowAttachMenuChanged: (v) =>
                   setState(() => _showAttachMenu = v), // ★ NEW
               onSend: (msg) {
+                //set id message
+                msg.IdMsg = 'msg_${DateTime.now().microsecondsSinceEpoch}';
                 msg.replyMsg = _replyingMsg;
                 _msgsNotifier.value = [..._msgsNotifier.value, msg];
                 setState(() {
@@ -149,4 +152,3 @@ class _ChatpageState extends State<Chatpage> {
     );
   }
 }
-

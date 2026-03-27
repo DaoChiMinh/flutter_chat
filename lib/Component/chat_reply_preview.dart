@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
 
-class _ReplyInputPreview extends StatelessWidget {
+class ReplyInputPreview extends StatelessWidget {
   final Chatmsgobject msg;
 
-  const _ReplyInputPreview({required this.msg});
+  const ReplyInputPreview({required this.msg});
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +45,7 @@ class _ReplyInputPreview extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                msg.isMe ? "Bạn" : msg.User_Name,
+                msg.isMe ? "Bạn" : msg.Comment,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
