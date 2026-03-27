@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_chat/Component/chat_url_preview.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
@@ -493,11 +494,18 @@ class _MessageBubble extends StatelessWidget {
 // ★ ChatMessageUrl — Rich Link Preview giống Zalo
 // ═══════════════════════════════════════════════════════════
 
-class ChatMessageUrl extends StatelessWidget {
+class ChatMessageUrl extends StatefulWidget {
   final Chatmsgobject msg;
   final VoidCallback onTap;
 
   const ChatMessageUrl({super.key, required this.msg, required this.onTap});
+
+  @override
+  State<ChatMessageUrl> createState() => _ChatMessageUrlState();
+}
+
+class _ChatMessageUrlState extends State<ChatMessageUrl> {
+  Chatmsgobject get msg => widget.msg;
 
   String get _url => msg.file;
   String get _displayDomain {
@@ -506,9 +514,47 @@ class ChatMessageUrl extends StatelessWidget {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // ★ Nếu chưa có metadata và chưa fetch → tự fetch
+    if (msg.isUrlLoading) {
+      _autoFetch();
+    }
+  }
+
+  Future<void> _autoFetch() async {
+    final url = _url;
+    if (url.isEmpty) {
+      _markDone();
+      return;
+    }
+
+    try {
+      final metadata = await UrlMetadataFetcher.fetch(
+        url,
+      ).timeout(const Duration(seconds: 10));
+
+      if (!mounted) return;
+
+      msg.titleUrl = metadata.title;
+      msg.descriptioneUrl = metadata.description;
+      msg.ImageUrl = metadata.imageUrl;
+    } catch (_) {
+      // Timeout hoặc lỗi → bỏ qua
+    } finally {
+      _markDone();
+    }
+  }
+
+  void _markDone() {
+    msg.isUrlFetchDone = true;
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onTap,
+      onTap: widget.onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         clipBehavior: Clip.antiAlias,
@@ -601,7 +647,7 @@ class ChatMessageUrl extends StatelessWidget {
                       ),
                     ),
 
-                  // ── Loading khi đang fetch metadata (tối đa 10 giây) ──
+                  // ── Loading (tối đa 10 giây, sau đó tự ẩn) ──
                   if (msg.isUrlLoading)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
