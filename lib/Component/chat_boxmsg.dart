@@ -56,14 +56,9 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final type = msg.objtype();
 
-    final hasMediaOrFileOrLink =
-        type == ChatmsgObjtype.image ||
-        type == ChatmsgObjtype.video ||
-        type == ChatmsgObjtype.pdf ||
-        type == ChatmsgObjtype.doc ||
-        type == ChatmsgObjtype.excel ||
-        type == ChatmsgObjtype.file ||
-        type == ChatmsgObjtype.url;
+    // Kiểm tra xem tin nhắn URL có kèm text riêng không
+    // Ví dụ: "trang web này hay https://dantri.com" → extraText = "trang web này hay"
+    final extraText = type == ChatmsgObjtype.url ? _getExtraText(msg) : '';
 
     return GestureDetector(
       onLongPress: () => _showMessageActions(context),
@@ -99,7 +94,9 @@ class _MessageBubble extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: type == ChatmsgObjtype.tex
                       ? (msg.isMe ? const Color(0xFFD7FBE8) : Colors.white)
-                      : Colors.transparent,
+                      : (msg.isMe
+                            ? const Color(0xFFD7FBE8).withOpacity(0.5)
+                            : Colors.white),
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(16),
                     topRight: const Radius.circular(16),
@@ -113,6 +110,7 @@ class _MessageBubble extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // ── Image grid ──
                       if (type == ChatmsgObjtype.image)
                         ChatMediaGrid(
                           files: msg.strDataFile,
@@ -127,44 +125,58 @@ class _MessageBubble extends StatelessWidget {
                             ),
                           ),
                         ),
+
+                      // ── Sticker ──
                       if (type == ChatmsgObjtype.stiker)
                         Image.network(msg.Note, height: 120),
+
+                      // ── Video grid ──
                       if (type == ChatmsgObjtype.video)
                         ChatMediaGrid(
                           files: msg.strDataFile,
                           type: ChatmsgObjtype.video,
                           onTapItem: (index) {
-                            final path = msg.strDataFile[index];
-                            _openVideoPath(context, path);
+                            _openVideoPath(context, msg.strDataFile[index]);
                           },
                         ),
+
+                      // ── File attachment ──
                       if (_isFileType(type))
                         ChatMessageFile(
                           msg: msg,
                           onTap: () => _openFile(context),
                         ),
 
+                      // ── ★ URL: text ngoài URL trước ──
+                      if (type == ChatmsgObjtype.url && extraText.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: ChatMessageText(
+                            text: extraText,
+                            isRecalled: msg.isRecalled,
+                            onTapLink: (url) => _openLink(context, url),
+                          ),
+                        ),
+
+                      // ── ★ URL: link preview card ──
                       if (type == ChatmsgObjtype.url)
                         ChatMessageUrl(
-                          url: msg.file,
-                          rawText: msg.Note,
+                          msg: msg,
                           onTap: () => _openLink(context, msg.file),
                         ),
-                      if (type == ChatmsgObjtype.tex)
-                        if (msg.Note.trim().isNotEmpty)
-                          Padding(
-                            padding: EdgeInsets.only(
-                              top: hasMediaOrFileOrLink ? 8 : 0,
-                            ),
-                            child: ChatMessageText(
-                              text: msg.Note,
-                              isRecalled: msg.isRecalled,
-                              onTapLink: (url) => _openLink(context, url),
-                            ),
-                          ),
+
+                      // ── Text message (chỉ cho kiểu tex) ──
+                      if (type == ChatmsgObjtype.tex &&
+                          msg.Note.trim().isNotEmpty)
+                        ChatMessageText(
+                          text: msg.Note,
+                          isRecalled: msg.isRecalled,
+                          onTapLink: (url) => _openLink(context, url),
+                        ),
 
                       const SizedBox(height: 4),
 
+                      // ── Timestamp + pin ──
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -196,6 +208,27 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
+  // ── Lấy text KHÔNG PHẢI URL từ Note ──
+  // "trang web này hay https://dantri.com" → "trang web này hay"
+  String _getExtraText(Chatmsgobject msg) {
+    var text = msg.Note.trim();
+    if (text.isEmpty) return '';
+
+    // Xoá URL ra khỏi text
+    for (final url in msg.strDataFile) {
+      text = text.replaceAll(url, '');
+    }
+
+    // Xoá thêm dạng không có https://
+    final urlRegex = RegExp(
+      r'(https?://[^\s]+)|(www\.[^\s]+)|((?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:[/?#][^\s]*)?)',
+      caseSensitive: false,
+    );
+    text = text.replaceAll(urlRegex, '');
+
+    return text.trim();
+  }
+
   bool _isFileType(ChatmsgObjtype type) {
     return [
       ChatmsgObjtype.pdf,
@@ -224,11 +257,9 @@ class _MessageBubble extends StatelessWidget {
       _showSnackBar(context, "Liên kết trống");
       return;
     }
-
     final fixedUrl = raw.startsWith("http://") || raw.startsWith("https://")
         ? raw
         : "https://$raw";
-
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => ChatWebViewerPage(url: fixedUrl)),
@@ -274,7 +305,6 @@ class _MessageBubble extends StatelessWidget {
         page = ChatUnsupportedFilePage(path: path, title: _buildTitle(type));
         break;
     }
-
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
@@ -434,10 +464,162 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+// ★ ChatMessageUrl — Rich Link Preview giống Zalo
+// ═══════════════════════════════════════════════════════════
+
+class ChatMessageUrl extends StatelessWidget {
+  final Chatmsgobject msg;
+  final VoidCallback onTap;
+
+  const ChatMessageUrl({super.key, required this.msg, required this.onTap});
+
+  String get _url => msg.file;
+  String get _displayDomain {
+    final uri = Uri.tryParse(_url);
+    return uri?.host ?? _url;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE1E5EA)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Ảnh preview (nếu có) ──
+            if (msg.ImageUrl != null && msg.ImageUrl!.isNotEmpty)
+              SizedBox(
+                width: double.infinity,
+                height: 160,
+                child: Image.network(
+                  msg.ImageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: const Color(0xFFF0F2F5),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.language,
+                      color: Colors.grey,
+                      size: 32,
+                    ),
+                  ),
+                  loadingBuilder: (_, child, progress) {
+                    if (progress == null) return child;
+                    return Container(
+                      color: const Color(0xFFF0F2F5),
+                      alignment: Alignment.center,
+                      child: const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Domain ──
+                  Text(
+                    _displayDomain,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.green.shade700,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+
+                  // ── Title ──
+                  if (msg.titleUrl != null && msg.titleUrl!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        msg.titleUrl!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+
+                  // ── Description ──
+                  if (msg.descriptioneUrl != null &&
+                      msg.descriptioneUrl!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        msg.descriptioneUrl!,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade700,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+
+                  // ── Loading khi chưa có metadata ──
+                  if (!msg.hasUrlPreview)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: Colors.grey.shade400,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Đang tải xem trước...",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Các widget còn lại (giữ nguyên từ bản gốc)
+// ═══════════════════════════════════════════════════════════
+
 class ChatMediaGrid extends StatelessWidget {
   final List<String> files;
   final ChatmsgObjtype type;
-  final ValueChanged<int> onTapItem; // ← ĐỔI: trả index thay vì path
+  final ValueChanged<int> onTapItem;
 
   const ChatMediaGrid({
     super.key,
@@ -456,12 +638,10 @@ class ChatMediaGrid extends StatelessWidget {
     final count = files.length;
     final maxW = MediaQuery.of(context).size.width * 0.68;
 
-    // ── 1 ảnh: full width, max height 180 ──
     if (count == 1) {
       return _cell(0, maxW, 180, borderRadius: BorderRadius.circular(_radius));
     }
 
-    // ── 2 ảnh: 2 cột ngang bằng nhau ──
     if (count == 2) {
       final w = (maxW - _gap) / 2;
       final h = w;
@@ -491,7 +671,6 @@ class ChatMediaGrid extends StatelessWidget {
       );
     }
 
-    // ── 3 ảnh: Zalo style — 1 lớn trái + 2 nhỏ phải ──
     if (count == 3) {
       final bigW = maxW * 0.6;
       final smallW = maxW - bigW - _gap;
@@ -536,28 +715,18 @@ class ChatMediaGrid extends StatelessWidget {
       );
     }
 
-    // ── 4+ ảnh: dynamic grid, max 3/hàng ──
     return _buildDynamicGrid(maxW);
   }
 
-  // ────────────────────────────────────────────────────────
-  // Phân bổ ảnh vào các hàng, tối đa 3/hàng, đối xứng
-  // 4→[2,2]  5→[3,2]  6→[3,3]  7→[2,3,2]  8→[3,3,2]
-  // 9→[3,3,3]  10→[2,3,3,2]  11→[3,3,3,2]  12→[3,3,3,3]
-  // ────────────────────────────────────────────────────────
   List<int> _distributeRows(int count) {
-    final numRows = (count + 2) ~/ 3; // ceil(count / 3)
+    final numRows = (count + 2) ~/ 3;
     final base = count ~/ numRows;
     final extra = count % numRows;
-
     final rows = List<int>.filled(numRows, base);
-
-    // Đặt phần dư vào giữa → layout đối xứng
     final start = (numRows - extra) ~/ 2;
     for (int i = 0; i < extra; i++) {
       rows[start + i]++;
     }
-
     return rows;
   }
 
@@ -565,53 +734,38 @@ class ChatMediaGrid extends StatelessWidget {
     final rowSizes = _distributeRows(files.length);
     final numRows = rowSizes.length;
     const cellH = 120.0;
-
     int fileIdx = 0;
     final rowWidgets = <Widget>[];
 
     for (int r = 0; r < numRows; r++) {
       final cols = rowSizes[r];
       final cellW = (maxW - _gap * (cols - 1)) / cols;
-
       final cells = <Widget>[];
       for (int c = 0; c < cols; c++) {
-        // Bo góc chỉ ở 4 góc ngoài cùng của grid
-        final isFirstRow = r == 0;
-        final isLastRow = r == numRows - 1;
-        final isFirstCol = c == 0;
-        final isLastCol = c == cols - 1;
-
         final br = BorderRadius.only(
-          topLeft: isFirstRow && isFirstCol
+          topLeft: r == 0 && c == 0
               ? const Radius.circular(_radius)
               : Radius.zero,
-          topRight: isFirstRow && isLastCol
+          topRight: r == 0 && c == cols - 1
               ? const Radius.circular(_radius)
               : Radius.zero,
-          bottomLeft: isLastRow && isFirstCol
+          bottomLeft: r == numRows - 1 && c == 0
               ? const Radius.circular(_radius)
               : Radius.zero,
-          bottomRight: isLastRow && isLastCol
+          bottomRight: r == numRows - 1 && c == cols - 1
               ? const Radius.circular(_radius)
               : Radius.zero,
         );
-
         cells.add(_cell(fileIdx, cellW, cellH, borderRadius: br));
         fileIdx++;
-
         if (c < cols - 1) cells.add(const SizedBox(width: _gap));
       }
-
       rowWidgets.add(Row(mainAxisSize: MainAxisSize.min, children: cells));
       if (r < numRows - 1) rowWidgets.add(const SizedBox(height: _gap));
     }
-
     return Column(mainAxisSize: MainAxisSize.min, children: rowWidgets);
   }
 
-  // ────────────────────────────────────────────────────────
-  // Single cell
-  // ────────────────────────────────────────────────────────
   Widget _cell(
     int index,
     double w,
@@ -641,7 +795,6 @@ class ChatMediaGrid extends StatelessWidget {
         errorBuilder: (_, __, ___) => _fallback(),
       );
     }
-
     if (File(path).existsSync()) {
       return Image.file(
         File(path),
@@ -649,7 +802,6 @@ class ChatMediaGrid extends StatelessWidget {
         errorBuilder: (_, __, ___) => _fallback(),
       );
     }
-
     final bytes = _decodeBase64(path);
     if (bytes != null) {
       return Image.memory(
@@ -658,7 +810,6 @@ class ChatMediaGrid extends StatelessWidget {
         errorBuilder: (_, __, ___) => _fallback(),
       );
     }
-
     return _fallback();
   }
 
@@ -793,7 +944,6 @@ class ChatMessageText extends StatelessWidget {
 
   bool _isProbablyUrl(String value) {
     final v = value.trim().toLowerCase();
-
     return v.startsWith('http://') ||
         v.startsWith('https://') ||
         v.startsWith('www.') ||
@@ -805,10 +955,7 @@ class ChatMessageText extends StatelessWidget {
 
   String _normalizeUrl(String value) {
     final v = value.trim();
-
-    if (v.startsWith('http://') || v.startsWith('https://')) {
-      return v;
-    }
+    if (v.startsWith('http://') || v.startsWith('https://')) return v;
     return 'https://$v';
   }
 
@@ -819,14 +966,12 @@ class ChatMessageText extends StatelessWidget {
       color: Colors.black87,
       fontStyle: isRecalled ? FontStyle.italic : FontStyle.normal,
     );
-
     final styleMention = TextStyle(
       fontSize: 15,
       color: Colors.blue.shade700,
       fontWeight: FontWeight.w600,
       fontStyle: isRecalled ? FontStyle.italic : FontStyle.normal,
     );
-
     final styleLink = TextStyle(
       fontSize: 15,
       color: Colors.blue.shade700,
@@ -840,10 +985,7 @@ class ChatMessageText extends StatelessWidget {
     );
 
     final matches = tokenReg.allMatches(text).toList(growable: false);
-
-    if (matches.isEmpty) {
-      return Text(text, style: styleNormal);
-    }
+    if (matches.isEmpty) return Text(text, style: styleNormal);
 
     final spans = <InlineSpan>[];
     int current = 0;
@@ -854,9 +996,7 @@ class ChatMessageText extends StatelessWidget {
           TextSpan(text: text.substring(current, m.start), style: styleNormal),
         );
       }
-
       final token = text.substring(m.start, m.end);
-
       if (token.startsWith('@')) {
         spans.add(TextSpan(text: token, style: styleMention));
       } else if (_isProbablyUrl(token)) {
@@ -871,7 +1011,6 @@ class ChatMessageText extends StatelessWidget {
       } else {
         spans.add(TextSpan(text: token, style: styleNormal));
       }
-
       current = m.end;
     }
 
@@ -921,19 +1060,18 @@ class ChatMessageImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget child;
-
     if (_isNetwork) {
       child = Image.network(
         data,
         fit: BoxFit.cover,
         height: 200,
-        errorBuilder: (_, _, _) => _buildError(),
+        errorBuilder: (_, __, ___) => _buildError(),
       );
     } else if (File(data).existsSync()) {
       child = Image.file(
         File(data),
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => _buildError(),
+        errorBuilder: (_, __, ___) => _buildError(),
       );
     } else if (_isBase64) {
       final bytes = _decodeBase64(data);
@@ -942,7 +1080,7 @@ class ChatMessageImage extends StatelessWidget {
           : Image.memory(
               bytes,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _buildError(),
+              errorBuilder: (_, __, ___) => _buildError(),
             );
     } else {
       child = _buildError();
@@ -959,7 +1097,6 @@ class ChatMessageImage extends StatelessWidget {
         child: child,
       ),
     );
-
     if (onTap == null) return body;
     return InkWell(onTap: onTap, child: body);
   }
@@ -980,69 +1117,6 @@ class ChatMessageSticker extends StatelessWidget {
   final VoidCallback onTap;
 
   const ChatMessageSticker({
-    super.key,
-    required this.url,
-    required this.rawText,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5F7FA),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFE1E5EA)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.link, color: Colors.blueGrey),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    url,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Colors.blue,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (rawText.trim().isNotEmpty)
-                    Text(
-                      rawText,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class ChatMessageUrl extends StatelessWidget {
-  final String url;
-  final String rawText;
-  final VoidCallback onTap;
-
-  const ChatMessageUrl({
     super.key,
     required this.url,
     required this.rawText,
@@ -1205,7 +1279,7 @@ class ChatMessageVideo extends StatelessWidget {
                   ? Image(
                       image: thumbnail!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => _fallback(),
+                      errorBuilder: (_, __, ___) => _fallback(),
                     )
                   : _fallback(),
             ),
@@ -1254,7 +1328,6 @@ class ChatMessageVideo extends StatelessWidget {
 
 class ChatVideoViewerPage extends StatefulWidget {
   final String path;
-
   const ChatVideoViewerPage({super.key, required this.path});
 
   @override
@@ -1270,17 +1343,16 @@ class _ChatVideoViewerPageState extends State<ChatVideoViewerPage> {
   Timer? _hideTimer;
 
   bool get _isNetwork {
-    final value = widget.path.trim();
-    return value.startsWith("http://") || value.startsWith("https://");
+    final v = widget.path.trim();
+    return v.startsWith("http://") || v.startsWith("https://");
   }
 
   bool get _isBase64 {
-    final value = widget.path.trim();
-    if (value.isEmpty) return false;
-    if (_isNetwork) return false;
-    if (value.startsWith("data:video/")) return true;
-    if (value.length < 100) return false;
-    return RegExp(r'^[A-Za-z0-9+/=\r\n]+$').hasMatch(value);
+    final v = widget.path.trim();
+    if (v.isEmpty || _isNetwork) return false;
+    if (v.startsWith("data:video/")) return true;
+    if (v.length < 100) return false;
+    return RegExp(r'^[A-Za-z0-9+/=\r\n]+$').hasMatch(v);
   }
 
   @override
@@ -1292,10 +1364,7 @@ class _ChatVideoViewerPageState extends State<ChatVideoViewerPage> {
   Future<void> _initVideo() async {
     try {
       final source = widget.path.trim();
-      if (source.isEmpty) {
-        throw Exception("Empty video source");
-      }
-
+      if (source.isEmpty) throw Exception("Empty");
       if (_isNetwork) {
         _controller = VideoPlayerController.networkUrl(Uri.parse(source));
       } else if (_isBase64) {
@@ -1304,15 +1373,12 @@ class _ChatVideoViewerPageState extends State<ChatVideoViewerPage> {
       } else {
         _controller = VideoPlayerController.file(File(source));
       }
-
       await _controller!.initialize();
       _controller!.addListener(_onTick);
-
       setState(() {
         _ready = true;
         _hasError = false;
       });
-
       _startAutoHide();
     } catch (_) {
       setState(() {
@@ -1326,70 +1392,50 @@ class _ChatVideoViewerPageState extends State<ChatVideoViewerPage> {
     final raw = base64Value.contains(',')
         ? base64Value.substring(base64Value.indexOf(',') + 1)
         : base64Value;
-
     final normalized = raw.replaceAll('\n', '').replaceAll('\r', '');
     final hash = normalized.hashCode;
     final file = File('${Directory.systemTemp.path}/chat_video_$hash.mp4');
-
     if (await file.exists()) return file;
-
     final bytes = base64Decode(normalized);
     await file.writeAsBytes(bytes, flush: true);
     return file;
   }
 
   void _onTick() {
-    if (mounted && !_isDragging) {
-      setState(() {});
-    }
+    if (mounted && !_isDragging) setState(() {});
   }
 
   void _startAutoHide() {
     _hideTimer?.cancel();
     if (_controller?.value.isPlaying != true) return;
-
     _hideTimer = Timer(const Duration(seconds: 3), () {
       if (!mounted) return;
-      setState(() {
-        _showControls = false;
-      });
+      setState(() => _showControls = false);
     });
   }
 
   void _togglePlayPause() {
-    final controller = _controller;
-    if (controller == null) return;
-
-    if (controller.value.isPlaying) {
-      controller.pause();
-      setState(() {
-        _showControls = true;
-      });
+    final c = _controller;
+    if (c == null) return;
+    if (c.value.isPlaying) {
+      c.pause();
+      setState(() => _showControls = true);
       _hideTimer?.cancel();
     } else {
-      controller.play();
-      setState(() {
-        _showControls = true;
-      });
+      c.play();
+      setState(() => _showControls = true);
       _startAutoHide();
     }
   }
 
   Future<void> _seekRelative(Duration delta) async {
-    final controller = _controller;
-    if (controller == null) return;
-
-    final current = controller.value.position;
-    final total = controller.value.duration;
-
-    var target = current + delta;
+    final c = _controller;
+    if (c == null) return;
+    var target = c.value.position + delta;
     if (target < Duration.zero) target = Duration.zero;
-    if (target > total) target = total;
-
-    await controller.seekTo(target);
-    setState(() {
-      _showControls = true;
-    });
+    if (target > c.value.duration) target = c.value.duration;
+    await c.seekTo(target);
+    setState(() => _showControls = true);
     _startAutoHide();
   }
 
@@ -1410,8 +1456,7 @@ class _ChatVideoViewerPageState extends State<ChatVideoViewerPage> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = _controller;
-
+    final c = _controller;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -1425,13 +1470,11 @@ class _ChatVideoViewerPageState extends State<ChatVideoViewerPage> {
                 "Không mở được video",
                 style: TextStyle(color: Colors.white),
               )
-            : !_ready || controller == null
+            : !_ready || c == null
             ? const CircularProgressIndicator()
             : GestureDetector(
                 onTap: () {
-                  setState(() {
-                    _showControls = !_showControls;
-                  });
+                  setState(() => _showControls = !_showControls);
                   if (_showControls) _startAutoHide();
                 },
                 child: Stack(
@@ -1439,8 +1482,8 @@ class _ChatVideoViewerPageState extends State<ChatVideoViewerPage> {
                   children: [
                     Center(
                       child: AspectRatio(
-                        aspectRatio: controller.value.aspectRatio,
-                        child: VideoPlayer(controller),
+                        aspectRatio: c.value.aspectRatio,
+                        child: VideoPlayer(c),
                       ),
                     ),
                     if (_showControls)
@@ -1467,7 +1510,7 @@ class _ChatVideoViewerPageState extends State<ChatVideoViewerPage> {
                                   IconButton(
                                     onPressed: _togglePlayPause,
                                     icon: Icon(
-                                      controller.value.isPlaying
+                                      c.value.isPlaying
                                           ? Icons.pause_circle_filled
                                           : Icons.play_circle_fill,
                                       color: Colors.white,
@@ -1495,7 +1538,7 @@ class _ChatVideoViewerPageState extends State<ChatVideoViewerPage> {
                                 child: Row(
                                   children: [
                                     Text(
-                                      _format(controller.value.position),
+                                      _format(c.value.position),
                                       style: const TextStyle(
                                         color: Colors.white,
                                       ),
@@ -1511,19 +1554,13 @@ class _ChatVideoViewerPageState extends State<ChatVideoViewerPage> {
                                         ),
                                         child: Slider(
                                           value:
-                                              controller
-                                                      .value
-                                                      .duration
-                                                      .inMilliseconds <=
+                                              c.value.duration.inMilliseconds <=
                                                   0
                                               ? 0
-                                              : controller
-                                                    .value
-                                                    .position
-                                                    .inMilliseconds
+                                              : c.value.position.inMilliseconds
                                                     .clamp(
                                                       0,
-                                                      controller
+                                                      c
                                                           .value
                                                           .duration
                                                           .inMilliseconds,
@@ -1531,26 +1568,19 @@ class _ChatVideoViewerPageState extends State<ChatVideoViewerPage> {
                                                     .toDouble(),
                                           min: 0,
                                           max:
-                                              controller
-                                                      .value
-                                                      .duration
-                                                      .inMilliseconds <=
+                                              c.value.duration.inMilliseconds <=
                                                   0
                                               ? 1
-                                              : controller
-                                                    .value
-                                                    .duration
-                                                    .inMilliseconds
+                                              : c.value.duration.inMilliseconds
                                                     .toDouble(),
                                           onChangeStart: (_) {
                                             _isDragging = true;
                                             _hideTimer?.cancel();
                                           },
-                                          onChanged: (value) async {
-                                            final target = Duration(
-                                              milliseconds: value.toInt(),
+                                          onChanged: (v) async {
+                                            await c.seekTo(
+                                              Duration(milliseconds: v.toInt()),
                                             );
-                                            await controller.seekTo(target);
                                             if (mounted) setState(() {});
                                           },
                                           onChangeEnd: (_) {
@@ -1561,7 +1591,7 @@ class _ChatVideoViewerPageState extends State<ChatVideoViewerPage> {
                                       ),
                                     ),
                                     Text(
-                                      _format(controller.value.duration),
+                                      _format(c.value.duration),
                                       style: const TextStyle(
                                         color: Colors.white,
                                       ),
@@ -1584,7 +1614,6 @@ class _ChatVideoViewerPageState extends State<ChatVideoViewerPage> {
 
 class ChatWebViewerPage extends StatefulWidget {
   final String url;
-
   const ChatWebViewerPage({super.key, required this.url});
 
   @override
@@ -1598,15 +1627,12 @@ class _ChatWebViewerPageState extends State<ChatWebViewerPage> {
   @override
   void initState() {
     super.initState();
-
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (_) {
-            if (mounted) {
-              setState(() => isLoading = false);
-            }
+            if (mounted) setState(() => isLoading = false);
           },
         ),
       )
@@ -1642,15 +1668,12 @@ class _ChatWebViewerPageState extends State<ChatWebViewerPage> {
 
 class ChatImageViewerPage extends StatelessWidget {
   final String path;
-
   const ChatImageViewerPage({super.key, required this.path});
 
   bool get _isNetwork =>
       path.startsWith('http://') || path.startsWith('https://');
-
   bool get _isBase64 {
-    if (path.isEmpty) return false;
-    if (_isNetwork) return false;
+    if (path.isEmpty || _isNetwork) return false;
     if (File(path).existsSync()) return false;
     return path.startsWith("data:image/") ||
         RegExp(r'^[A-Za-z0-9+/=\r\n]+$').hasMatch(path.trim());
@@ -1670,7 +1693,6 @@ class ChatImageViewerPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget imageWidget;
-
     if (_isNetwork) {
       imageWidget = Image.network(path, fit: BoxFit.contain);
     } else if (File(path).existsSync()) {
@@ -1687,7 +1709,6 @@ class ChatImageViewerPage extends StatelessWidget {
         size: 48,
       );
     }
-
     return Scaffold(
       appBar: AppBar(title: const Text('Hình ảnh')),
       backgroundColor: Colors.black,
@@ -1704,7 +1725,6 @@ class ChatImageViewerPage extends StatelessWidget {
 
 class ChatPdfViewerPage extends StatelessWidget {
   final String path;
-
   const ChatPdfViewerPage({super.key, required this.path});
 
   bool get _isNetwork =>
@@ -1724,7 +1744,6 @@ class ChatPdfViewerPage extends StatelessWidget {
 class ChatDocViewerPage extends StatelessWidget {
   final String path;
   final String title;
-
   const ChatDocViewerPage({super.key, required this.path, required this.title});
 
   bool get _isNetwork =>
@@ -1732,11 +1751,9 @@ class ChatDocViewerPage extends StatelessWidget {
 
   Future<void> _open(BuildContext context) async {
     if (_isNetwork) {
-      final googleViewerUrl =
+      final gUrl =
           'https://docs.google.com/gview?embedded=1&url=${Uri.encodeComponent(path)}';
-
-      final uri = Uri.parse(googleViewerUrl);
-
+      final uri = Uri.parse(gUrl);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
         return;
@@ -1750,7 +1767,6 @@ class ChatDocViewerPage extends StatelessWidget {
       }
       return;
     }
-
     if (context.mounted) {
       ScaffoldMessenger.of(
         context,
@@ -1776,7 +1792,6 @@ class ChatDocViewerPage extends StatelessWidget {
 class ChatUnsupportedFilePage extends StatelessWidget {
   final String path;
   final String title;
-
   const ChatUnsupportedFilePage({
     super.key,
     required this.path,

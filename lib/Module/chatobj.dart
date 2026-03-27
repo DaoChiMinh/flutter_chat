@@ -20,12 +20,9 @@ class Chatmsgobject {
   String Idgroup = "";
   String Note = ""; //noi dung
   DateTime? Send_Date;
-  //ChatmsgObjtype objtype => V_CheckType();
-  List<String> strDataFile =
-      []; // nếu kiểu image, video, file thì là strbase64 hoặc Url, url: là UrlFile
-  //List<String>? strDataFiles = strDataFile.split(";");
+  List<String> strDataFile = [];
   String strTypeFile = "";
-  Chatmsgobject? replyMsg; // nội dung tinh nhắn trả lời
+  Chatmsgobject? replyMsg; // nội dung tin nhắn trả lời
 
   bool isMe = false;
   bool isPinned = false;
@@ -34,9 +31,17 @@ class Chatmsgobject {
   double uploadProgress = 0;
   String status = ""; // sent, received, read
 
-  String? ImageUrl; // đường link ảnh của ChatmsgObjtype Url
-  String? titleUrl;
-  String? descriptioneUrl;
+  // ── URL Preview metadata ──
+  String? ImageUrl; // đường link ảnh preview
+  String? titleUrl; // tiêu đề trang web
+  String? descriptioneUrl; // mô tả trang web
+
+  /// Flag nội bộ: đánh dấu đây là cập nhật metadata, không phải tin nhắn mới
+  bool isMetadataUpdate = false;
+
+  /// Kiểm tra đã có metadata preview chưa
+  bool get hasUrlPreview =>
+      titleUrl != null || descriptioneUrl != null || ImageUrl != null;
 
   ChatmsgObjtype objtype() {
     if (strTypeFile.isEmpty) return ChatmsgObjtype.tex;
