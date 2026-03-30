@@ -239,7 +239,6 @@ class ReplyPreview extends StatelessWidget {
 
       case ChatmsgObjtype.tex:
       case ChatmsgObjtype.stiker:
-      default:
         return Text(
           reply.Note.isNotEmpty ? reply.Note : "Tin nhắn",
           style: TextStyle(color: Colors.blueGrey),
@@ -303,6 +302,7 @@ class ReplyPreview extends StatelessWidget {
     );
   }
 
+  
   Widget _replyLinkPreview() {
     return SizedBox(
       height: 40,
@@ -353,3 +353,4 @@ class ReplyPreview extends StatelessWidget {
     );
   }
 }
+

@@ -18,7 +18,8 @@ class _ChatpageState extends State<Chatpage> {
   bool _showGallery = false;
   bool _showAttachMenu = false; // ★ NEW
   final ItemScrollController _itemScrollController = ItemScrollController();
-  final Map<String, GlobalKey> _messageKeys = {};
+  final currentUser =
+      "Nguyen Quang Minh"; // user hiện tại, thay bằng account login thật
   final _msgsNotifier = ValueNotifier<List<Chatmsgobject>>(
     List.from(Chatmsgobjects),
   );
@@ -32,13 +33,31 @@ class _ChatpageState extends State<Chatpage> {
     });
   }
 
+  void _handleReaction(Chatmsgobject msg, String emoji) {
+    final list = [..._msgsNotifier.value];
+    final i = list.indexWhere((e) => e.IdMsg == msg.IdMsg);
+    if (i == -1) return;
+    list[i].setReaction(currentUser, emoji);
+    _msgsNotifier.value = list;
+  }
+
+  void _handleRemoveMyReaction(Chatmsgobject msg) {
+    final list = [..._msgsNotifier.value];
+    final i = list.indexWhere((e) => e.IdMsg == msg.IdMsg);
+    if (i == -1) return;
+
+    const currentUser = 'Nguyen Quang Minh';
+    list[i].removeReactionOfUser(currentUser);
+    _msgsNotifier.value = list;
+  }
+
   void _scrollToMessage(String idMsg) {
     final list = _msgsNotifier.value;
 
     final index = list.indexWhere((e) => e.IdMsg == idMsg);
     if (index == -1) return;
 
-    //đang để reverse list 
+    //đang để reverse list
     final reverseIndex = list.length - 1 - index;
 
     _itemScrollController.scrollTo(
@@ -98,12 +117,14 @@ class _ChatpageState extends State<Chatpage> {
                   builder: (context, msgs, _) {
                     return ChatMessage(
                       msgs: msgs,
+                      currentUser: currentUser,
                       onReply: _handleReply,
                       onRecall: _handleRecall,
                       onDelete: _handleDelete,
                       onTapReplyPreview: _scrollToMessage,
                       itemScrollController: _itemScrollController,
-                      messageKeys: _messageKeys,
+                      onReaction: _handleReaction,
+                      onRemoveMyReaction: _handleRemoveMyReaction,
                     );
                   },
                 ),

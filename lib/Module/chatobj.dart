@@ -14,41 +14,88 @@ class ChatGroup {
 }
 
 class Chatmsgobject {
-  String User_Name = ""; // tài khoản người gửi dữ liệu
-  String Comment = ""; // tên người dùng
+  String User_Name = "";
+  String Comment = "";
   String IdMsg = "";
   String Idgroup = "";
-  String Note = ""; //noi dung
+  String Note = "";
   DateTime? Send_Date;
   List<String> strDataFile = [];
   String strTypeFile = "";
-  Chatmsgobject? replyMsg; // nội dung tin nhắn trả lời
+  Chatmsgobject? replyMsg;
 
   bool isMe = false;
   bool isPinned = false;
   bool isRecalled = false;
   bool isUploading = false;
   double uploadProgress = 0;
-  String status = ""; // sent, received, read
+  String status = "";
 
-  // ── URL Preview metadata ──
-  String? ImageUrl; // đường link ảnh preview
-  String? titleUrl; // tiêu đề trang web
-  String? descriptioneUrl; // mô tả trang web
+  String? ImageUrl;
+  String? titleUrl;
+  String? descriptioneUrl;
 
-  /// Đánh dấu đã fetch xong (thành công hoặc thất bại) → ẩn loading
   bool isUrlFetchDone = false;
 
-  /// Kiểm tra đã có metadata preview chưa
+  int audioDurationSeconds = 0;
+
+  // ★ REACTION
+  List<ChatReaction> reactions = [];
+
+  bool get hasReaction => reactions.isNotEmpty;
+
+  /// Tổng reaction
+  int get reactionCount => reactions.length;
+
+  /// Lấy tối đa 3 emoji đầu tiên theo thứ tự unique
+  List<String> get top3ReactionEmojis {
+    final result = <String>[];
+    for (final r in reactions) {
+      if (!result.contains(r.emoji)) {
+        result.add(r.emoji);
+      }
+      if (result.length == 3) break;
+    }
+    return result;
+  }
+
+  void setReaction(String userName, String emoji) {
+    reactions.removeWhere((e) => e.userName == userName);
+
+    reactions.add(
+      ChatReaction(emoji: emoji, userName: userName, createdAt: DateTime.now()),
+    );
+  }
+
+  /// Danh sách emoji unique + count
+  Map<String, int> get reactionSummary {
+    final map = <String, int>{};
+    for (final r in reactions) {
+      map[r.emoji] = (map[r.emoji] ?? 0) + 1;
+    }
+    return map;
+  }
+
+  void removeReactionOfUser(String userName) {
+    reactions.removeWhere((e) => e.userName == userName);
+  }
+
+  /// Group theo user -> list emoji
+  Map<String, List<String>> get reactionByUser {
+    final map = <String, List<String>>{};
+    for (final r in reactions) {
+      map.putIfAbsent(r.userName, () => []);
+      if (!map[r.userName]!.contains(r.emoji)) {
+        map[r.userName]!.add(r.emoji);
+      }
+    }
+    return map;
+  }
+
   bool get hasUrlPreview =>
       titleUrl != null || descriptioneUrl != null || ImageUrl != null;
 
-  /// Còn đang loading preview không?
-  /// false khi: đã fetch xong HOẶC đã có metadata
   bool get isUrlLoading => !isUrlFetchDone && !hasUrlPreview;
-
-  // ── ★ Audio metadata ──
-  int audioDurationSeconds = 0; // thời lượng ghi âm (giây)
 
   ChatmsgObjtype objtype() {
     if (strTypeFile.isEmpty) return ChatmsgObjtype.tex;
@@ -101,4 +148,16 @@ class ChatItemMenu {
   String? Id;
   String? IconName;
   String? Caption;
+}
+
+class ChatReaction {
+  final String emoji;
+  final String userName;
+  final DateTime createdAt;
+
+  ChatReaction({
+    required this.emoji,
+    required this.userName,
+    required this.createdAt,
+  });
 }
