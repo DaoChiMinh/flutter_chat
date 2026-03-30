@@ -4,6 +4,7 @@ import 'package:flutter_chat/Component/chat_input.dart';
 import 'package:flutter_chat/Module/chatData.dart';
 import 'package:flutter_chat/Component/chat_reply_preview.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 class Chatpage extends StatefulWidget {
   const Chatpage({super.key});
@@ -16,7 +17,7 @@ class _ChatpageState extends State<Chatpage> {
   bool _showEmoji = false;
   bool _showGallery = false;
   bool _showAttachMenu = false; // ★ NEW
-  final ScrollController _scrollController = ScrollController();
+  final ItemScrollController _itemScrollController = ItemScrollController();
   final Map<String, GlobalKey> _messageKeys = {};
   final _msgsNotifier = ValueNotifier<List<Chatmsgobject>>(
     List.from(Chatmsgobjects),
@@ -32,18 +33,19 @@ class _ChatpageState extends State<Chatpage> {
   }
 
   void _scrollToMessage(String idMsg) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final key = _messageKeys[idMsg];
-      final ctx = key?.currentContext;
-      if (ctx == null) return;
+    final list = _msgsNotifier.value;
 
-      Scrollable.ensureVisible(
-        ctx,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        alignment: 0.2,
-      );
-    });
+    final index = list.indexWhere((e) => e.IdMsg == idMsg);
+    if (index == -1) return;
+
+    //đang để reverse list 
+    final reverseIndex = list.length - 1 - index;
+
+    _itemScrollController.scrollTo(
+      index: reverseIndex,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+    );
   }
 
   void _handleReply(Chatmsgobject msg) {
@@ -100,7 +102,7 @@ class _ChatpageState extends State<Chatpage> {
                       onRecall: _handleRecall,
                       onDelete: _handleDelete,
                       onTapReplyPreview: _scrollToMessage,
-                      scrollController: _scrollController,
+                      itemScrollController: _itemScrollController,
                       messageKeys: _messageKeys,
                     );
                   },
@@ -147,9 +149,9 @@ class _ChatpageState extends State<Chatpage> {
                 });
                 CloseAll();
                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (!_scrollController.hasClients) return;
-                  _scrollController.animateTo(
-                    0,
+                  //if (!_itemScrollController.hasClients) return;
+                  _itemScrollController.scrollTo(
+                    index: 0,
                     duration: const Duration(milliseconds: 250),
                     curve: Curves.easeOut,
                   );
