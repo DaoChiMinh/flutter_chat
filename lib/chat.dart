@@ -27,11 +27,16 @@ class _ChatpageState extends State<Chatpage> {
 
   Chatmsgobject? _replyingMsg;
   final ChatPinController _pinController = ChatPinController();
+  bool _isSearching = false;
+  final TextEditingController _searchCtrl = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
 
   @override
   void dispose() {
     _inputFocusNode.dispose();
     _pinController.dispose();
+    _searchCtrl.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -50,6 +55,20 @@ class _ChatpageState extends State<Chatpage> {
       msgsNotifier: _msgsNotifier,
       onStateChanged: () => setState(() {}),
     );
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+
+      if (!_isSearching) {
+        _searchCtrl.clear();
+      }
+    });
+
+    if (_isSearching) {
+      Future.microtask(() => _searchFocusNode.requestFocus());
+    }
   }
 
   // ================= REACTION =================
@@ -137,7 +156,63 @@ class _ChatpageState extends State<Chatpage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.red,
-        title: const Text("Chat", style: TextStyle(color: Colors.white)),
+        title: _isSearching
+            ? Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: TextField(
+                  controller: _searchCtrl,
+                  focusNode: _searchFocusNode,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Tìm trong đoạn chat', 
+                    hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    suffixIcon: _searchCtrl.text.isNotEmpty
+                        ? IconButton(
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              setState(() {});
+                            },
+                            icon: const Icon(Icons.close, size: 18),
+                          )
+                        : null,
+                  ),
+                  onChanged: (_) {
+                    setState(() {}); 
+                  },
+                ),
+              )
+            : const Text("Chat", style: TextStyle(color: Colors.white)),
+
+        actions: [
+          if (_isSearching)
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: Center(
+                child: Text(
+                  '0/0', 
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
+            ),
+
+          IconButton(
+            onPressed: _toggleSearch,
+            icon: Icon(
+              _isSearching ? Icons.close : Icons.search,
+              color: Colors.white,
+            ),
+          ),
+        ],
       ),
       resizeToAvoidBottomInset: true,
       body: Container(

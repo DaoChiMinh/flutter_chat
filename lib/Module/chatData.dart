@@ -88,8 +88,14 @@ List<Chatmsgobject> Chatmsgobjects = [
     ..Comment = "Nguyễn Quang Minh"
     ..Note = "test reply"
     ..IdMsg = "8"
-    ..Send_Date = DateTime.now()
+    ..Send_Date = DateTime(2026, 4, 01)
     ..strDataFile = ["https://openai.com"]
     ..strTypeFile = "url"
+    ..isMe = false,
+  Chatmsgobject()
+    ..Comment = "Nguyễn Quang Minh"
+    ..Note = "Ngày mai đi chơi không"
+    ..IdMsg = "9"
+    ..Send_Date = DateTime(2026, 4, 02)
     ..isMe = false,
 ];

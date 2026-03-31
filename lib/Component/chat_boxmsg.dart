@@ -23,6 +23,7 @@ class ChatMessage extends StatefulWidget {
   final ValueChanged<Chatmsgobject>? onForward;
   final ItemScrollController? itemScrollController;
   final void Function(Chatmsgobject msg, String emoji)? onReaction;
+  final void Function(Chatmsgobject msg, String status)? onApproveStatus;
   const ChatMessage({
     super.key,
     required this.currentUser,
@@ -36,6 +37,7 @@ class ChatMessage extends StatefulWidget {
     this.itemScrollController,
     this.onReaction,
     this.onRemoveMyReaction,
+    this.onApproveStatus
   });
 
   @override
@@ -43,6 +45,19 @@ class ChatMessage extends StatefulWidget {
 }
 
 class _ChatMessageState extends State<ChatMessage> {
+  bool isSameDay(DateTime? a, DateTime? b) {
+    if (a == null || b == null) return false;
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  String formatDateOnly(DateTime? dt) {
+    if (dt == null) return '';
+    final dd = dt.day.toString().padLeft(2, '0');
+    final mm = dt.month.toString().padLeft(2, '0');
+    final yyyy = dt.year.toString();
+    return '$dd/$mm/$yyyy';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.msgs.isEmpty) {
@@ -60,20 +75,57 @@ class _ChatMessageState extends State<ChatMessage> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       itemCount: widget.msgs.length,
       itemBuilder: (context, index) {
-        final msg = widget.msgs[widget.msgs.length - 1 - index];
+        final originalIndex = widget.msgs.length - 1 - index;
+        final msg = widget.msgs[originalIndex];
 
-        return _MessageBubble(
-          key: ValueKey(msg.IdMsg),
-          currentUser: widget.currentUser,
-          msg: msg,
-          onReply: widget.onReply,
-          onRecall: widget.onRecall,
-          onDelete: widget.onDelete,
-          onTapReplyPreview: widget.onTapReplyPreview,
-          onReaction: widget.onReaction,
-          onRemoveMyReaction: widget.onRemoveMyReaction,
-          onPin: widget.onPin,
-          onForward: widget.onForward,
+        final Chatmsgobject? prevMsgInTime = originalIndex > 0
+            ? widget.msgs[originalIndex - 1]
+            : null;
+
+        final bool showDateHeader =
+            prevMsgInTime == null ||
+            !isSameDay(msg.Send_Date, prevMsgInTime.Send_Date);
+
+        return Column(
+          children: [
+            if (showDateHeader)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      formatDateOnly(msg.Send_Date),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            _MessageBubble(
+              key: ValueKey(msg.IdMsg),
+              currentUser: widget.currentUser,
+              msg: msg,
+              onReply: widget.onReply,
+              onRecall: widget.onRecall,
+              onDelete: widget.onDelete,
+              onTapReplyPreview: widget.onTapReplyPreview,
+              onReaction: widget.onReaction,
+              onRemoveMyReaction: widget.onRemoveMyReaction,
+              onPin: widget.onPin,
+              onForward: widget.onForward,
+            ),
+          ],
         );
       },
     );
@@ -271,7 +323,12 @@ class _MessageBubble extends StatelessWidget {
                                   ? msg.audioDurationSeconds
                                   : null,
                             ),
-
+                          if (type == ChatmsgObjtype.url)
+                            ChatMessageUrl(
+                              msg: msg,
+                              onTap: () => _openLink(context, msg.file),
+                            ),
+                          const SizedBox(height: 8),
                           if (type == ChatmsgObjtype.url &&
                               extraText.isNotEmpty)
                             Padding(
@@ -281,12 +338,6 @@ class _MessageBubble extends StatelessWidget {
                                 isRecalled: msg.isRecalled,
                                 onTapLink: (url) => _openLink(context, url),
                               ),
-                            ),
-
-                          if (type == ChatmsgObjtype.url)
-                            ChatMessageUrl(
-                              msg: msg,
-                              onTap: () => _openLink(context, msg.file),
                             ),
 
                           if (_shouldShowNoteText(type) &&
