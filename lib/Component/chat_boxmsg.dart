@@ -20,6 +20,7 @@ class ChatMessage extends StatefulWidget {
   final ValueChanged<String>? onTapReplyPreview;
   final ValueChanged<Chatmsgobject>? onRemoveMyReaction;
   final ValueChanged<Chatmsgobject>? onPin;
+  final ValueChanged<Chatmsgobject>? onForward;
   final ItemScrollController? itemScrollController;
   final void Function(Chatmsgobject msg, String emoji)? onReaction;
   const ChatMessage({
@@ -31,6 +32,7 @@ class ChatMessage extends StatefulWidget {
     this.onDelete,
     this.onTapReplyPreview,
     this.onPin,
+    this.onForward,
     this.itemScrollController,
     this.onReaction,
     this.onRemoveMyReaction,
@@ -71,6 +73,7 @@ class _ChatMessageState extends State<ChatMessage> {
           onReaction: widget.onReaction,
           onRemoveMyReaction: widget.onRemoveMyReaction,
           onPin: widget.onPin,
+          onForward: widget.onForward,
         );
       },
     );
@@ -87,6 +90,7 @@ class _MessageBubble extends StatelessWidget {
   final void Function(Chatmsgobject msg, String emoji)? onReaction;
   final ValueChanged<Chatmsgobject>? onRemoveMyReaction;
   final ValueChanged<Chatmsgobject>? onPin;
+  final ValueChanged<Chatmsgobject>? onForward;
 
   const _MessageBubble({
     super.key,
@@ -99,6 +103,7 @@ class _MessageBubble extends StatelessWidget {
     this.onReaction,
     this.onRemoveMyReaction,
     this.onPin,
+    this.onForward,
   });
 
   @override
@@ -119,7 +124,7 @@ class _MessageBubble extends StatelessWidget {
             children: [
               ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.76,
+                  maxWidth: MediaQuery.of(context).size.width * 0.70,
                 ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -329,6 +334,18 @@ class _MessageBubble extends StatelessWidget {
                     ),
                   ),
 
+                  if (_shouldShowForwardIcon(type))
+                    Positioned(
+                      left: msg.isMe ? -32 : null,
+                      right: msg.isMe ? null : -32,
+                      top: 0,
+                      bottom: msg.hasReaction ? 18 : 0,
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: _buildForwardIcon(context),
+                      ),
+                    ),
+
                   if (msg.hasReaction)
                     Positioned(
                       right: 6,
@@ -364,6 +381,19 @@ class _MessageBubble extends StatelessWidget {
     return text.trim();
   }
 
+  bool _shouldShowForwardIcon(ChatmsgObjtype type) {
+    return [
+      ChatmsgObjtype.image,
+      ChatmsgObjtype.video,
+      ChatmsgObjtype.pdf,
+      ChatmsgObjtype.doc,
+      ChatmsgObjtype.excel,
+      ChatmsgObjtype.file,
+      ChatmsgObjtype.url,
+      ChatmsgObjtype.audio,
+    ].contains(type);
+  }
+
   bool _isFileType(ChatmsgObjtype type) {
     return [
       ChatmsgObjtype.pdf,
@@ -387,10 +417,35 @@ class _MessageBubble extends StatelessWidget {
     return "$hh:$mm";
   }
 
+  //snack bar nho o giua man hinh
   void _showSnackBar(BuildContext context, String text) {
+    final height = MediaQuery.of(context).size.height;
+
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(text)));
+      ..showSnackBar(
+        SnackBar(
+          content: Center(
+            child: Text(
+              text,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white, fontSize: 13),
+            ),
+          ),
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.only(
+            bottom: height * 0.4, // đẩy lên giữa màn hình
+            left: 80,
+            right: 80,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Colors.black87,
+          duration: const Duration(seconds: 2),
+          elevation: 0,
+        ),
+      );
   }
 
   Future<void> _openLink(BuildContext context, String url) async {
@@ -487,6 +542,99 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
+  Widget _buildForwardIcon(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        onForward?.call(msg);
+        _showSnackBar(context, 'Xử lí chuyển tiếp');
+      },
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFFE2E5EA)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        //msg.isMe ? Matrix4.identity() :
+        child: Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.rotationY(3.1416),
+          child: const Icon(Icons.reply, size: 16, color: Color(0xFF6E7682)),
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _confirmDelete(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Xóa tin nhắn?',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Bạn có chắc muốn xóa tin nhắn này không?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+                const SizedBox(height: 20),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text(
+                          'Hủy',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text(
+                          'Xóa',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    return result ?? false;
+  }
+
   void _showMessageActions(BuildContext context) async {
     final result = await showChatMessageActionMenu(context, msg: msg);
     if (result == null || !context.mounted) return;
@@ -507,12 +655,19 @@ class _MessageBubble extends StatelessWidget {
         onReply?.call(msg);
         break;
       case 'forward':
+        onForward?.call(msg);
+        _showSnackBar(context, 'Xử lí chuyển tiếp');
         break;
       case 'recall':
         onRecall?.call(msg);
+        //_showSnackBar(context, 'Đã thu hồi tin nhắn');
         break;
       case 'delete':
-        onDelete?.call(msg);
+        final ok = await _confirmDelete(context);
+        if (ok) {
+          onDelete?.call(msg);
+          _showSnackBar(context, 'Đã xóa tin nhắn');
+        }
         break;
     }
   }

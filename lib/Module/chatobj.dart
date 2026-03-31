@@ -34,6 +34,9 @@ class Chatmsgobject {
   String? ImageUrl;
   String? titleUrl;
   String? descriptioneUrl;
+  bool isApprove = false; // ★ Tin nhắn cần duyệt
+  //bool approved = false; // da duyet hay chua
+  String approvedStatus = "";
 
   bool isUrlFetchDone = false;
 

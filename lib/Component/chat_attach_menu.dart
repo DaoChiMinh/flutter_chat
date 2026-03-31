@@ -143,7 +143,7 @@ class ChatAttachMenuPanel extends StatelessWidget {
     } else {
       note = fileName;
     }
-
+    
     onSend(
       Chatmsgobject()
         ..Comment = "minhdc"

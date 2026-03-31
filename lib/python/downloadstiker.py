@@ -249,7 +249,6 @@ def download_stickers(stickers: list[dict], out_dir: str, prefix: str, use_webp:
 
     return mapping
 
-
 # ============================================================
 # DART CODE GENERATOR
 # ============================================================

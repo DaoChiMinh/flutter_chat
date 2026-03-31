@@ -40,37 +40,49 @@ class ReplyInputPreview extends StatelessWidget {
 
         if (type != ChatmsgObjtype.tex) const SizedBox(width: 8),
         if (type == ChatmsgObjtype.stiker)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: SizedBox(
-              width: 40,
-              height: 40,
-              child: ReplyPreview._buildStickerThumb(msg.Note),
-            ),
-          ),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              Text(
-                msg.isMe ? "Bạn" : msg.Comment,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: ReplyPreview._buildStickerThumb(msg.Note),
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(width: 8),
               Text(
-                _replyText(msg),
+                "[Sticker]",
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 13, color: Colors.black54),
               ),
             ],
           ),
-        ),
+        if (type != ChatmsgObjtype.stiker)
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  msg.isMe ? "Bạn" : msg.Comment,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _replyText(msg),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -184,10 +196,7 @@ class ReplyPreview extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Flexible(
-                      // QUAN TRỌNG NHẤT
-                      child: _buildReplyContent(type),
-                    ),
+                    Flexible(child: _buildReplyContent(type)),
                   ],
                 ),
               ),
@@ -247,19 +256,22 @@ class ReplyPreview extends StatelessWidget {
 
       case ChatmsgObjtype.tex:
       case ChatmsgObjtype.stiker:
-        return _replyMediaPreview(
-          child: _buildStickerThumb(reply.Note),
-          text: "Sticker",
+        if (reply.Note.startsWith("http") ||
+            (reply.Note.contains(".png") || reply.Note.contains(".jpg"))) {
+          return _replyMediaPreview(
+            child: _buildStickerThumb(reply.Note),
+            text: "Sticker",
+          );
+        }
+        return Text(
+          reply.Note.isNotEmpty ? reply.Note : "Tin nhắn",
+          style: TextStyle(color: Colors.blueGrey),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         );
-      // return Text(
-      //   reply.Note.isNotEmpty ? reply.Note : "Tin nhắn",
-      //   style: TextStyle(color: Colors.blueGrey),
-      //   maxLines: 1,
-      //   overflow: TextOverflow.ellipsis,
-      // );
     }
   }
-
+    
   Widget _replyMediaPreview({required Widget child, required String text}) {
     return SizedBox(
       height: 40,
@@ -355,7 +367,7 @@ class ReplyPreview extends StatelessWidget {
     return Image.asset(
       path,
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(
+      errorBuilder: (_, _, _) => Container(
         color: Colors.black12,
         alignment: Alignment.center,
         child: const Icon(Icons.image),
@@ -368,7 +380,7 @@ class ReplyPreview extends StatelessWidget {
       return Image.network(
         url,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
+        errorBuilder: (_, _, _) => Container(
           color: Colors.black12,
           alignment: Alignment.center,
           child: const Icon(Icons.emoji_emotions),
@@ -379,7 +391,7 @@ class ReplyPreview extends StatelessWidget {
     return Image.asset(
       url,
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(
+      errorBuilder: (_, _, _) => Container(
         color: Colors.black12,
         alignment: Alignment.center,
         child: const Icon(Icons.emoji_emotions),

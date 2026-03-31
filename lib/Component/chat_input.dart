@@ -348,7 +348,7 @@ class _ChatInputState extends State<ChatInput> {
         ..Comment = "minhdc"
         ..isMe = true
         ..Note = text
-        ..Send_Date = DateTime.now(),
+        ..Send_Date = DateTime.now()
     );
   }
 
