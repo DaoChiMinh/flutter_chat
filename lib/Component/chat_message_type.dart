@@ -609,6 +609,7 @@ class _ChatVideoThumbState extends State<ChatVideoThumb> {
     super.dispose();
   }
 
+
   @override
   Widget build(BuildContext context) {
     Widget body;

@@ -59,7 +59,8 @@ class ChatInput extends StatefulWidget {
     required this.showAttachMenu, // ★ NEW
     required this.onShowEmojiChanged,
     required this.onShowGalleryChanged,
-    required this.onShowAttachMenuChanged, // ★ NEW
+    required this.onShowAttachMenuChanged,
+    FocusNode? this.externalFocusNode, // ★ NEW
     this.onRefreshMessages,
   });
 
@@ -70,7 +71,9 @@ class ChatInput extends StatefulWidget {
   final bool showAttachMenu; // ★ NEW
   final ValueChanged<bool> onShowEmojiChanged;
   final ValueChanged<bool> onShowGalleryChanged;
-  final ValueChanged<bool> onShowAttachMenuChanged; // ★ NEW
+  final ValueChanged<bool> onShowAttachMenuChanged; 
+  //Thêm focus node từ ngoài
+  final FocusNode? externalFocusNode; // ★ NEW
 
   @override
   State<ChatInput> createState() => _ChatInputState();
@@ -78,7 +81,13 @@ class ChatInput extends StatefulWidget {
 
 class _ChatInputState extends State<ChatInput> {
   final _textController = TextEditingController();
-  final _focusNode = FocusNode();
+  late final FocusNode _focusNode;
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = widget.externalFocusNode ?? FocusNode();
+  }
+
   var _state = const ChatInputState();
 
   // ── URL detect state ──

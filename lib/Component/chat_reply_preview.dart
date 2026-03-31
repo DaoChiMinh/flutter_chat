@@ -39,7 +39,15 @@ class ReplyInputPreview extends StatelessWidget {
           ),
 
         if (type != ChatmsgObjtype.tex) const SizedBox(width: 8),
-
+        if (type == ChatmsgObjtype.stiker)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: ReplyPreview._buildStickerThumb(msg.Note),
+            ),
+          ),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,7 +83,7 @@ class ReplyInputPreview extends StatelessWidget {
       image = Image.network(
         path,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
+        errorBuilder: (_, _, _) => Container(
           color: Colors.black12,
           alignment: Alignment.center,
           child: const Icon(Icons.image),
@@ -239,12 +247,16 @@ class ReplyPreview extends StatelessWidget {
 
       case ChatmsgObjtype.tex:
       case ChatmsgObjtype.stiker:
-        return Text(
-          reply.Note.isNotEmpty ? reply.Note : "Tin nhắn",
-          style: TextStyle(color: Colors.blueGrey),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        return _replyMediaPreview(
+          child: _buildStickerThumb(reply.Note),
+          text: "Sticker",
         );
+      // return Text(
+      //   reply.Note.isNotEmpty ? reply.Note : "Tin nhắn",
+      //   style: TextStyle(color: Colors.blueGrey),
+      //   maxLines: 1,
+      //   overflow: TextOverflow.ellipsis,
+      // );
     }
   }
 
@@ -273,7 +285,6 @@ class ReplyPreview extends StatelessWidget {
 
   Widget _replyFilePreview(String path) {
     final fileName = path.split('/').last;
-
     return SizedBox(
       height: 40,
       child: Row(
@@ -302,7 +313,6 @@ class ReplyPreview extends StatelessWidget {
     );
   }
 
-  
   Widget _replyLinkPreview() {
     return SizedBox(
       height: 40,
@@ -352,5 +362,28 @@ class ReplyPreview extends StatelessWidget {
       ),
     );
   }
-}
 
+  static Widget _buildStickerThumb(String url) {
+    if (url.startsWith('http')) {
+      return Image.network(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          color: Colors.black12,
+          alignment: Alignment.center,
+          child: const Icon(Icons.emoji_emotions),
+        ),
+      );
+    }
+
+    return Image.asset(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        color: Colors.black12,
+        alignment: Alignment.center,
+        child: const Icon(Icons.emoji_emotions),
+      ),
+    );
+  }
+}

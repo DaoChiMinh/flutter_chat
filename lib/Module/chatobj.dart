@@ -47,14 +47,13 @@ class Chatmsgobject {
   /// Tổng reaction
   int get reactionCount => reactions.length;
 
-  /// Lấy tối đa 3 emoji đầu tiên theo thứ tự unique
-  List<String> get top3ReactionEmojis {
+  /// getEmoji
+  List<String> get getEmojiList {
     final result = <String>[];
     for (final r in reactions) {
       if (!result.contains(r.emoji)) {
         result.add(r.emoji);
       }
-      if (result.length == 3) break;
     }
     return result;
   }
@@ -140,15 +139,15 @@ enum ChatmsgObjtype {
   audio, // ★ Tin nhắn thoại
 }
 
-class ChatMenu {
-  List<ChatItemMenu>? ChatItemMenus;
-}
+// class ChatMenu {
+//   List<ChatItemMenu>? ChatItemMenus;
+// }
 
-class ChatItemMenu {
-  String? Id;
-  String? IconName;
-  String? Caption;
-}
+// class ChatItemMenu {
+//   String? Id;
+//   String? IconName;
+//   String? Caption;
+// }
 
 class ChatReaction {
   final String emoji;

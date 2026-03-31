@@ -17,9 +17,9 @@ List<User_name> User_Names = [
     ..User_Name = "DungNt"
     ..Comment = "Nguyễn Tiến Dũng",
 ];
-List<ChatGroup> ChatGroups = [];
+// List<ChatGroup> ChatGroups = [];
 
-List<ChatMenu> ChatMenus = [];
+// List<ChatMenu> ChatMenus = [];
 
 List<Chatmsgobject> Chatmsgobjects = [
   Chatmsgobject()

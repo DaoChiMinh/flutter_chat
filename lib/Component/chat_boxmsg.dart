@@ -9,7 +9,6 @@ import 'package:flutter_chat/Component/chat_message_type.dart';
 import 'package:flutter_chat/Component/chat_reply_preview.dart';
 import 'package:flutter_chat/Component/chat_view_page.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
-import 'package:path/path.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 class ChatMessage extends StatefulWidget {
@@ -20,6 +19,7 @@ class ChatMessage extends StatefulWidget {
   final ValueChanged<Chatmsgobject>? onDelete;
   final ValueChanged<String>? onTapReplyPreview;
   final ValueChanged<Chatmsgobject>? onRemoveMyReaction;
+  final ValueChanged<Chatmsgobject>? onPin;
   final ItemScrollController? itemScrollController;
   final void Function(Chatmsgobject msg, String emoji)? onReaction;
   const ChatMessage({
@@ -30,6 +30,7 @@ class ChatMessage extends StatefulWidget {
     this.onRecall,
     this.onDelete,
     this.onTapReplyPreview,
+    this.onPin,
     this.itemScrollController,
     this.onReaction,
     this.onRemoveMyReaction,
@@ -69,6 +70,7 @@ class _ChatMessageState extends State<ChatMessage> {
           onTapReplyPreview: widget.onTapReplyPreview,
           onReaction: widget.onReaction,
           onRemoveMyReaction: widget.onRemoveMyReaction,
+          onPin: widget.onPin,
         );
       },
     );
@@ -84,6 +86,7 @@ class _MessageBubble extends StatelessWidget {
   final ValueChanged<String>? onTapReplyPreview;
   final void Function(Chatmsgobject msg, String emoji)? onReaction;
   final ValueChanged<Chatmsgobject>? onRemoveMyReaction;
+  final ValueChanged<Chatmsgobject>? onPin;
 
   const _MessageBubble({
     super.key,
@@ -95,6 +98,7 @@ class _MessageBubble extends StatelessWidget {
     this.onTapReplyPreview,
     this.onReaction,
     this.onRemoveMyReaction,
+    this.onPin,
   });
 
   @override
@@ -496,13 +500,14 @@ class _MessageBubble extends StatelessWidget {
         _showSnackBar(context, 'Đã sao chép');
         break;
       case 'pin':
-        msg.isPinned = !msg.isPinned;
+        onPin?.call(msg);
         _showSnackBar(context, msg.isPinned ? 'Đã ghim' : 'Đã bỏ ghim');
         break;
       case 'reply':
         onReply?.call(msg);
         break;
       case 'forward':
+        break;
       case 'recall':
         onRecall?.call(msg);
         break;
@@ -812,7 +817,7 @@ class ChatReactionBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final emojis = msg.top3ReactionEmojis;
+    final emojis = msg.getEmojiList;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
