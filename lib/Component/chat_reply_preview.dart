@@ -206,7 +206,7 @@ class ReplyPreview extends StatelessWidget {
       ),
     );
   }
-
+  
   Widget _buildReplyContent(ChatmsgObjtype type) {
     if (reply.isRecalled) {
       return const Text(

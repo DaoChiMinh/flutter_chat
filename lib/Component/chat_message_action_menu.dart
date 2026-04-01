@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_chat/Component/chat_approved.dart';
 import 'package:flutter_chat/Component/chat_boxmsg.dart';
+import 'package:flutter_chat/Component/chat_image_gallery.dart';
+import 'package:flutter_chat/Component/chat_media_grid.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
+import 'package:flutter_chat/utils.dart';
 
 // ═══════════════════════════════════════════════════════════
 // ★ Reaction Emoji Data
@@ -266,13 +270,6 @@ class _MessagePreviewBubble extends StatelessWidget {
 
   const _MessagePreviewBubble({required this.msg});
 
-  String _formatTime(DateTime? dt) {
-    if (dt == null) return '';
-    final hh = dt.hour.toString().padLeft(2, '0');
-    final mm = dt.minute.toString().padLeft(2, '0');
-    return '$hh:$mm';
-  }
-
   String get _previewText {
     if (msg.Note.trim().isNotEmpty) return msg.Note.trim();
     final type = msg.objtype();
@@ -371,7 +368,7 @@ class _MessagePreviewBubble extends StatelessWidget {
                   child: Image.network(
                     msg.ImageUrl!,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (_, _, _) => Container(
                       color: const Color(0xFFF0F2F5),
                       alignment: Alignment.center,
                       child: const Icon(
@@ -486,7 +483,7 @@ class _MessagePreviewBubble extends StatelessWidget {
 
           const SizedBox(height: 8),
           Text(
-            _formatTime(msg.Send_Date),
+            formatDate(msg.Send_Date),
             style: TextStyle(
               fontSize: 12,
               color: Colors.grey.shade500,
@@ -494,6 +491,41 @@ class _MessagePreviewBubble extends StatelessWidget {
               fontWeight: FontWeight.normal,
             ),
           ),
+          if (msg.isApprove &&
+              !msg.isRecalled &&
+              msg.approvedStatus.trim().isEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                buildApproveChip(
+                  label: '👍 Duyệt',
+                  color: const Color(0xFF1FA855),
+                  onTap: () {
+                    Navigator.pop(
+                      context,
+                      const ChatMenuResult(type: 'approved'),
+                    );
+                  },
+                ),
+                const SizedBox(width: 6),
+                buildApproveChip(
+                  label: '👎 Không duyệt',
+                  color: const Color(0xFFE53935),
+                  onTap: () {
+                    Navigator.pop(
+                      context,
+                      const ChatMenuResult(type: 'rejected'),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+          if (msg.approvedStatus.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            buildApprovedStatusBadge(msg.approvedStatus),
+          ],
         ],
       ),
     );

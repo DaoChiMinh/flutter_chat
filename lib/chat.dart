@@ -48,6 +48,15 @@ class _ChatpageState extends State<Chatpage> {
     });
   }
 
+  void _handleApproveStatus(Chatmsgobject msg, String status) {
+    final list = [..._msgsNotifier.value];
+    final i = list.indexWhere((e) => e.IdMsg == msg.IdMsg);
+    if (i == -1) return;
+
+    list[i].approvedStatus = status;
+    _msgsNotifier.value = list;
+  }
+
   // ================= PIN =================
   void _handlePin(Chatmsgobject msg) {
     _pinController.togglePin(
@@ -168,7 +177,7 @@ class _ChatpageState extends State<Chatpage> {
                   focusNode: _searchFocusNode,
                   autofocus: true,
                   decoration: InputDecoration(
-                    hintText: 'Tìm trong đoạn chat', 
+                    hintText: 'Tìm trong đoạn chat',
                     hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
                     border: InputBorder.none,
                     isDense: true,
@@ -187,7 +196,7 @@ class _ChatpageState extends State<Chatpage> {
                         : null,
                   ),
                   onChanged: (_) {
-                    setState(() {}); 
+                    setState(() {});
                   },
                 ),
               )
@@ -199,7 +208,7 @@ class _ChatpageState extends State<Chatpage> {
               padding: const EdgeInsets.only(right: 10),
               child: Center(
                 child: Text(
-                  '0/0', 
+                  '0/0',
                   style: const TextStyle(color: Colors.white, fontSize: 13),
                 ),
               ),
@@ -250,6 +259,7 @@ class _ChatpageState extends State<Chatpage> {
                       onRemoveMyReaction: _handleRemoveMyReaction,
                       onPin: _handlePin,
                       onForward: _handleForward,
+                      onApproveStatus: _handleApproveStatus,
                     );
                   },
                 ),

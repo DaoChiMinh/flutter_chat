@@ -1,15 +1,21 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_chat/Component/chat_approved.dart';
 import 'package:flutter_chat/Component/chat_audio.dart';
+import 'package:flutter_chat/Component/chat_image_gallery.dart';
+import 'package:flutter_chat/Component/chat_media_grid.dart';
 import 'package:flutter_chat/Component/chat_message_action_menu.dart';
 import 'package:flutter_chat/Component/chat_message_type.dart';
+import 'package:flutter_chat/Component/chat_react.dart';
 import 'package:flutter_chat/Component/chat_reply_preview.dart';
 import 'package:flutter_chat/Component/chat_view_page.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import 'package:flutter_chat/utils.dart';
 
 class ChatMessage extends StatefulWidget {
   final String currentUser;
@@ -24,6 +30,7 @@ class ChatMessage extends StatefulWidget {
   final ItemScrollController? itemScrollController;
   final void Function(Chatmsgobject msg, String emoji)? onReaction;
   final void Function(Chatmsgobject msg, String status)? onApproveStatus;
+
   const ChatMessage({
     super.key,
     required this.currentUser,
@@ -37,7 +44,7 @@ class ChatMessage extends StatefulWidget {
     this.itemScrollController,
     this.onReaction,
     this.onRemoveMyReaction,
-    this.onApproveStatus
+    this.onApproveStatus,
   });
 
   @override
@@ -45,17 +52,27 @@ class ChatMessage extends StatefulWidget {
 }
 
 class _ChatMessageState extends State<ChatMessage> {
-  bool isSameDay(DateTime? a, DateTime? b) {
+  String? _longPressedApproveMsgId;
+
+  bool _isSameDay(DateTime? a, DateTime? b) {
     if (a == null || b == null) return false;
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  String formatDateOnly(DateTime? dt) {
+  String _formatDateOnly(DateTime? dt) {
     if (dt == null) return '';
     final dd = dt.day.toString().padLeft(2, '0');
     final mm = dt.month.toString().padLeft(2, '0');
     final yyyy = dt.year.toString();
     return '$dd/$mm/$yyyy';
+  }
+
+  void _clearApproveActions() {
+    if (_longPressedApproveMsgId != null) {
+      setState(() {
+        _longPressedApproveMsgId = null;
+      });
+    }
   }
 
   @override
@@ -69,65 +86,85 @@ class _ChatMessageState extends State<ChatMessage> {
       );
     }
 
-    return ScrollablePositionedList.builder(
-      itemScrollController: widget.itemScrollController,
-      reverse: true,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      itemCount: widget.msgs.length,
-      itemBuilder: (context, index) {
-        final originalIndex = widget.msgs.length - 1 - index;
-        final msg = widget.msgs[originalIndex];
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: _clearApproveActions,
+      child: ScrollablePositionedList.builder(
+        itemScrollController: widget.itemScrollController,
+        reverse: true,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        itemCount: widget.msgs.length,
+        itemBuilder: (context, index) {
+          final originalIndex = widget.msgs.length - 1 - index;
+          final msg = widget.msgs[originalIndex];
 
-        final Chatmsgobject? prevMsgInTime = originalIndex > 0
-            ? widget.msgs[originalIndex - 1]
-            : null;
+          final Chatmsgobject? prevMsgInTime = originalIndex > 0
+              ? widget.msgs[originalIndex - 1]
+              : null;
 
-        final bool showDateHeader =
-            prevMsgInTime == null ||
-            !isSameDay(msg.Send_Date, prevMsgInTime.Send_Date);
+          final bool showDateHeader =
+              prevMsgInTime == null ||
+              !_isSameDay(msg.Send_Date, prevMsgInTime.Send_Date);
 
-        return Column(
-          children: [
-            if (showDateHeader)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      formatDateOnly(msg.Send_Date),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w500,
+          return Column(
+            children: [
+              if (showDateHeader)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        _formatDateOnly(msg.Send_Date),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),
                 ),
+              _MessageBubble(
+                key: ValueKey(msg.IdMsg),
+                currentUser: widget.currentUser,
+                msg: msg,
+                onReply: widget.onReply,
+                onRecall: widget.onRecall,
+                onDelete: widget.onDelete,
+                onTapReplyPreview: widget.onTapReplyPreview,
+                onReaction: widget.onReaction,
+                onRemoveMyReaction: widget.onRemoveMyReaction,
+                onPin: widget.onPin,
+                onForward: widget.onForward,
+                onApproveStatus: (targetMsg, status) {
+                  widget.onApproveStatus?.call(targetMsg, status);
+                  setState(() {
+                    _longPressedApproveMsgId = null;
+                  });
+                },
+                showApproveActions: _longPressedApproveMsgId == msg.IdMsg,
+                onToggleApproveActions: () {
+                  setState(() {
+                    if (_longPressedApproveMsgId == msg.IdMsg) {
+                      _longPressedApproveMsgId = null;
+                    } else {
+                      _longPressedApproveMsgId = msg.IdMsg;
+                    }
+                  });
+                },
               ),
-            _MessageBubble(
-              key: ValueKey(msg.IdMsg),
-              currentUser: widget.currentUser,
-              msg: msg,
-              onReply: widget.onReply,
-              onRecall: widget.onRecall,
-              onDelete: widget.onDelete,
-              onTapReplyPreview: widget.onTapReplyPreview,
-              onReaction: widget.onReaction,
-              onRemoveMyReaction: widget.onRemoveMyReaction,
-              onPin: widget.onPin,
-              onForward: widget.onForward,
-            ),
-          ],
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -143,6 +180,9 @@ class _MessageBubble extends StatelessWidget {
   final ValueChanged<Chatmsgobject>? onRemoveMyReaction;
   final ValueChanged<Chatmsgobject>? onPin;
   final ValueChanged<Chatmsgobject>? onForward;
+  final void Function(Chatmsgobject msg, String status)? onApproveStatus;
+  final bool showApproveActions;
+  final VoidCallback? onToggleApproveActions;
 
   const _MessageBubble({
     super.key,
@@ -156,14 +196,16 @@ class _MessageBubble extends StatelessWidget {
     this.onRemoveMyReaction,
     this.onPin,
     this.onForward,
+    this.onApproveStatus,
+    this.showApproveActions = false,
+    this.onToggleApproveActions,
   });
 
   @override
   Widget build(BuildContext context) {
     final type = msg.objtype();
-
-    // Kiểm tra xem tin nhắn URL có kèm text riêng không
     final extraText = type == ChatmsgObjtype.url ? _getExtraText(msg) : '';
+
     if (msg.isRecalled) {
       return GestureDetector(
         onLongPress: () => _showMessageActions(context),
@@ -176,7 +218,7 @@ class _MessageBubble extends StatelessWidget {
             children: [
               ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.70,
+                  maxWidth: MediaQuery.of(context).size.width * 0.76,
                 ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -207,8 +249,11 @@ class _MessageBubble extends StatelessWidget {
         ),
       );
     }
+
     return GestureDetector(
-      onLongPress: () => _showMessageActions(context),
+      onLongPress: () async {
+        await _showMessageActions(context);
+      },
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
@@ -310,7 +355,7 @@ class _MessageBubble extends StatelessWidget {
                               },
                             ),
 
-                          if (_isFileType(type))
+                          if (isFileType(type))
                             ChatMessageFile(
                               msg: msg,
                               onTap: () => _openFile(context),
@@ -323,16 +368,17 @@ class _MessageBubble extends StatelessWidget {
                                   ? msg.audioDurationSeconds
                                   : null,
                             ),
+
                           if (type == ChatmsgObjtype.url)
                             ChatMessageUrl(
                               msg: msg,
                               onTap: () => _openLink(context, msg.file),
                             ),
-                          const SizedBox(height: 8),
+
                           if (type == ChatmsgObjtype.url &&
                               extraText.isNotEmpty)
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.only(top: 8, bottom: 8),
                               child: ChatMessageText(
                                 text: extraText,
                                 isRecalled: msg.isRecalled,
@@ -340,8 +386,7 @@ class _MessageBubble extends StatelessWidget {
                               ),
                             ),
 
-                          if (_shouldShowNoteText(type) &&
-                              msg.Note.trim().isNotEmpty)
+                          if (shouldShowNoteText(type) && msg.Note.trim().isNotEmpty)
                             Padding(
                               padding: EdgeInsets.only(
                                 top:
@@ -371,12 +416,16 @@ class _MessageBubble extends StatelessWidget {
                                 const SizedBox(width: 4),
                               ],
                               Text(
-                                _formatDate(msg.Send_Date),
+                                formatDate(msg.Send_Date),
                                 style: const TextStyle(
                                   fontSize: 11,
                                   color: Colors.grey,
                                 ),
                               ),
+                              if (msg.approvedStatus.trim().isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                buildApprovedStatusBadge(msg.approvedStatus),
+                              ],
                             ],
                           ),
                           if (msg.hasReaction) const SizedBox(height: 12),
@@ -385,7 +434,7 @@ class _MessageBubble extends StatelessWidget {
                     ),
                   ),
 
-                  if (_shouldShowForwardIcon(type))
+                  if (shouldShowForwardIcon(type))
                     Positioned(
                       left: msg.isMe ? -32 : null,
                       right: msg.isMe ? null : -32,
@@ -415,6 +464,7 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
+
   String _getExtraText(Chatmsgobject msg) {
     var text = msg.Note.trim();
     if (text.isEmpty) return '';
@@ -432,77 +482,11 @@ class _MessageBubble extends StatelessWidget {
     return text.trim();
   }
 
-  bool _shouldShowForwardIcon(ChatmsgObjtype type) {
-    return [
-      ChatmsgObjtype.image,
-      ChatmsgObjtype.video,
-      ChatmsgObjtype.pdf,
-      ChatmsgObjtype.doc,
-      ChatmsgObjtype.excel,
-      ChatmsgObjtype.file,
-      ChatmsgObjtype.url,
-      ChatmsgObjtype.audio,
-    ].contains(type);
-  }
-
-  bool _isFileType(ChatmsgObjtype type) {
-    return [
-      ChatmsgObjtype.pdf,
-      ChatmsgObjtype.doc,
-      ChatmsgObjtype.excel,
-      ChatmsgObjtype.file,
-    ].contains(type);
-  }
-
-  /// Các loại tin nhắn nên hiển thị Note text bên dưới media
-  bool _shouldShowNoteText(ChatmsgObjtype type) {
-    return type == ChatmsgObjtype.tex ||
-        type == ChatmsgObjtype.image ||
-        type == ChatmsgObjtype.video;
-  }
-
-  String _formatDate(DateTime? dt) {
-    if (dt == null) return "";
-    final hh = dt.hour.toString().padLeft(2, '0');
-    final mm = dt.minute.toString().padLeft(2, '0');
-    return "$hh:$mm";
-  }
-
-  //snack bar nho o giua man hinh
-  void _showSnackBar(BuildContext context, String text) {
-    final height = MediaQuery.of(context).size.height;
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Center(
-            child: Text(
-              text,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white, fontSize: 13),
-            ),
-          ),
-          behavior: SnackBarBehavior.floating,
-          margin: EdgeInsets.only(
-            bottom: height * 0.4, // đẩy lên giữa màn hình
-            left: 80,
-            right: 80,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          backgroundColor: Colors.black87,
-          duration: const Duration(seconds: 2),
-          elevation: 0,
-        ),
-      );
-  }
 
   Future<void> _openLink(BuildContext context, String url) async {
     final raw = url.trim();
     if (raw.isEmpty) {
-      _showSnackBar(context, "Liên kết trống");
+      showSnackBar(context, "Liên kết trống");
       return;
     }
     final fixedUrl = raw.startsWith("http://") || raw.startsWith("https://")
@@ -547,31 +531,13 @@ class _MessageBubble extends StatelessWidget {
       case "xlsx":
       case "ppt":
       case "pptx":
-        page = ChatDocViewerPage(path: path, title: _buildTitle(type));
+        page = ChatDocViewerPage(path: path, title: buildTitle(type));
         break;
       default:
-        page = ChatUnsupportedFilePage(path: path, title: _buildTitle(type));
+        page = ChatUnsupportedFilePage(path: path, title: buildTitle(type));
         break;
     }
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-  }
-
-  String _buildTitle(String type) {
-    switch (type) {
-      case "pdf":
-        return "PDF";
-      case "doc":
-      case "docx":
-        return "Word";
-      case "xls":
-      case "xlsx":
-        return "Excel";
-      case "ppt":
-      case "pptx":
-        return "PowerPoint";
-      default:
-        return "Tệp";
-    }
   }
 
   void _showReactionUsersBottomSheet(BuildContext context) {
@@ -597,7 +563,7 @@ class _MessageBubble extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         onForward?.call(msg);
-        _showSnackBar(context, 'Xử lí chuyển tiếp');
+        showSnackBar(context, 'Xử lí chuyển tiếp');
       },
       child: Container(
         width: 28,
@@ -614,7 +580,6 @@ class _MessageBubble extends StatelessWidget {
             ),
           ],
         ),
-        //msg.isMe ? Matrix4.identity() :
         child: Transform(
           alignment: Alignment.center,
           transform: Matrix4.rotationY(3.1416),
@@ -624,69 +589,7 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
-  Future<bool> _confirmDelete(BuildContext context) async {
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Xóa tin nhắn?',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Bạn có chắc muốn xóa tin nhắn này không?',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-                const SizedBox(height: 20),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text(
-                          'Hủy',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text(
-                          'Xóa',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-
-    return result ?? false;
-  }
-
-  void _showMessageActions(BuildContext context) async {
+  Future<void> _showMessageActions(BuildContext context) async {
     final result = await showChatMessageActionMenu(context, msg: msg);
     if (result == null || !context.mounted) return;
 
@@ -694,563 +597,48 @@ class _MessageBubble extends StatelessWidget {
       case 'reaction':
         onReaction?.call(msg, result.reactionEmoji!);
         break;
+
+      case 'approved':
+        onApproveStatus?.call(msg, 'approved');
+        break;
+
+      case 'rejected':
+        onApproveStatus?.call(msg, 'rejected');
+        break;
+
       case 'copy':
         await Clipboard.setData(ClipboardData(text: msg.Note));
-        _showSnackBar(context, 'Đã sao chép');
+        showSnackBar(context, 'Đã sao chép');
         break;
+
       case 'pin':
         onPin?.call(msg);
-        _showSnackBar(context, msg.isPinned ? 'Đã ghim' : 'Đã bỏ ghim');
+        showSnackBar(context, msg.isPinned ? 'Đã ghim' : 'Đã bỏ ghim');
         break;
+
       case 'reply':
         onReply?.call(msg);
         break;
+
       case 'forward':
         onForward?.call(msg);
-        _showSnackBar(context, 'Xử lí chuyển tiếp');
+        showSnackBar(context, 'Xử lí chuyển tiếp');
         break;
+
       case 'recall':
         onRecall?.call(msg);
-        //_showSnackBar(context, 'Đã thu hồi tin nhắn');
         break;
+
       case 'delete':
-        final ok = await _confirmDelete(context);
+        final ok = await confirmDelete(context);
         if (ok) {
           onDelete?.call(msg);
-          _showSnackBar(context, 'Đã xóa tin nhắn');
+          showSnackBar(context, 'Đã xóa tin nhắn');
         }
         break;
     }
   }
 }
 
-class ChatMediaGrid extends StatelessWidget {
-  final List<String> files;
-  final ChatmsgObjtype type;
-  final ValueChanged<int> onTapItem;
 
-  const ChatMediaGrid({
-    super.key,
-    required this.files,
-    required this.type,
-    required this.onTapItem,
-  });
 
-  static const _gap = 2.0;
-  static const _radius = 10.0;
-
-  @override
-  Widget build(BuildContext context) {
-    if (files.isEmpty) return const SizedBox.shrink();
-
-    final count = files.length;
-    final maxW = MediaQuery.of(context).size.width * 0.68;
-
-    if (count == 1) {
-      return _cell(0, maxW, 180, borderRadius: BorderRadius.circular(_radius));
-    }
-
-    if (count == 2) {
-      final w = (maxW - _gap) / 2;
-      final h = w;
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _cell(
-            0,
-            w,
-            h,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(_radius),
-              bottomLeft: Radius.circular(_radius),
-            ),
-          ),
-          const SizedBox(width: _gap),
-          _cell(
-            1,
-            w,
-            h,
-            borderRadius: const BorderRadius.only(
-              topRight: Radius.circular(_radius),
-              bottomRight: Radius.circular(_radius),
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (count == 3) {
-      final bigW = maxW * 0.6;
-      final smallW = maxW - bigW - _gap;
-      final totalH = maxW * 0.75;
-      final smallH = (totalH - _gap) / 2;
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _cell(
-            0,
-            bigW,
-            totalH,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(_radius),
-              bottomLeft: Radius.circular(_radius),
-            ),
-          ),
-          const SizedBox(width: _gap),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _cell(
-                1,
-                smallW,
-                smallH,
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(_radius),
-                ),
-              ),
-              const SizedBox(height: _gap),
-              _cell(
-                2,
-                smallW,
-                smallH,
-                borderRadius: const BorderRadius.only(
-                  bottomRight: Radius.circular(_radius),
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-    }
-
-    return _buildDynamicGrid(maxW);
-  }
-
-  List<int> _distributeRows(int count) {
-    final numRows = (count + 2) ~/ 3;
-    final base = count ~/ numRows;
-    final extra = count % numRows;
-    final rows = List<int>.filled(numRows, base);
-    final start = (numRows - extra) ~/ 2;
-    for (int i = 0; i < extra; i++) {
-      rows[start + i]++;
-    }
-    return rows;
-  }
-
-  Widget _buildDynamicGrid(double maxW) {
-    final rowSizes = _distributeRows(files.length);
-    final numRows = rowSizes.length;
-    const cellH = 120.0;
-    int fileIdx = 0;
-    final rowWidgets = <Widget>[];
-
-    for (int r = 0; r < numRows; r++) {
-      final cols = rowSizes[r];
-      final cellW = (maxW - _gap * (cols - 1)) / cols;
-      final cells = <Widget>[];
-      for (int c = 0; c < cols; c++) {
-        final br = BorderRadius.only(
-          topLeft: r == 0 && c == 0
-              ? const Radius.circular(_radius)
-              : Radius.zero,
-          topRight: r == 0 && c == cols - 1
-              ? const Radius.circular(_radius)
-              : Radius.zero,
-          bottomLeft: r == numRows - 1 && c == 0
-              ? const Radius.circular(_radius)
-              : Radius.zero,
-          bottomRight: r == numRows - 1 && c == cols - 1
-              ? const Radius.circular(_radius)
-              : Radius.zero,
-        );
-        cells.add(_cell(fileIdx, cellW, cellH, borderRadius: br));
-        fileIdx++;
-        if (c < cols - 1) cells.add(const SizedBox(width: _gap));
-      }
-      rowWidgets.add(Row(mainAxisSize: MainAxisSize.min, children: cells));
-      if (r < numRows - 1) rowWidgets.add(const SizedBox(height: _gap));
-    }
-    return Column(mainAxisSize: MainAxisSize.min, children: rowWidgets);
-  }
-
-  Widget _cell(
-    int index,
-    double w,
-    double h, {
-    BorderRadius borderRadius = BorderRadius.zero,
-  }) {
-    return GestureDetector(
-      onTap: () => onTapItem(index),
-      child: ClipRRect(
-        borderRadius: borderRadius,
-        child: SizedBox(
-          width: w,
-          height: h,
-          child: type == ChatmsgObjtype.video
-              ? ChatVideoThumb(path: files[index])
-              : _buildImage(files[index]),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImage(String path) {
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-      return Image.network(
-        path,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _fallback(),
-      );
-    }
-    if (File(path).existsSync()) {
-      return Image.file(
-        File(path),
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _fallback(),
-      );
-    }
-    final bytes = _decodeBase64(path);
-    if (bytes != null) {
-      return Image.memory(
-        bytes,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _fallback(),
-      );
-    }
-    return _fallback();
-  }
-
-  Uint8List? _decodeBase64(String value) {
-    try {
-      final raw = value.contains(',') ? value.split(',').last : value;
-      return base64Decode(raw);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Widget _fallback() {
-    return Container(
-      color: const Color(0xFFF1F3F5),
-      alignment: Alignment.center,
-      child: const Icon(Icons.broken_image, color: Colors.grey),
-    );
-  }
-}
-
-class ChatImageGalleryPage extends StatefulWidget {
-  final List<String> paths;
-  final int initialIndex;
-
-  const ChatImageGalleryPage({
-    super.key,
-    required this.paths,
-    this.initialIndex = 0,
-  });
-
-  @override
-  State<ChatImageGalleryPage> createState() => _ChatImageGalleryPageState();
-}
-
-class _ChatImageGalleryPageState extends State<ChatImageGalleryPage> {
-  late final PageController _pageCtrl;
-  late int _currentPage;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentPage = widget.initialIndex;
-    _pageCtrl = PageController(initialPage: widget.initialIndex);
-  }
-
-  @override
-  void dispose() {
-    _pageCtrl.dispose();
-    super.dispose();
-  }
-
-  Widget _buildPageImage(String path) {
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return Image.network(path, fit: BoxFit.contain);
-    }
-    if (File(path).existsSync()) {
-      return Image.file(File(path), fit: BoxFit.contain);
-    }
-    try {
-      final raw = path.contains(',') ? path.split(',').last : path;
-      final bytes = base64Decode(raw);
-      return Image.memory(bytes, fit: BoxFit.contain);
-    } catch (_) {}
-    return const Icon(Icons.broken_image, color: Colors.white, size: 48);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Text(
-          '${_currentPage + 1} / ${widget.paths.length}',
-          style: const TextStyle(fontSize: 16),
-        ),
-        centerTitle: true,
-      ),
-      body: PageView.builder(
-        controller: _pageCtrl,
-        itemCount: widget.paths.length,
-        onPageChanged: (i) => setState(() => _currentPage = i),
-        itemBuilder: (_, i) {
-          return Center(
-            child: InteractiveViewer(
-              minScale: 0.8,
-              maxScale: 4,
-              child: _buildPageImage(widget.paths[i]),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class ChatReactionBadge extends StatelessWidget {
-  final Chatmsgobject msg;
-
-  const ChatReactionBadge({super.key, required this.msg});
-
-  @override
-  Widget build(BuildContext context) {
-    final emojis = msg.getEmojiList;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4F4F6),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 4,
-            offset: Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ...emojis.map(
-            (e) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 1),
-              child: Text(e, style: const TextStyle(fontSize: 13, height: 1)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ReactionUsersSheet extends StatefulWidget {
-  final Chatmsgobject msg;
-  final void Function(String userName)? onRemoveReaction;
-
-  const ReactionUsersSheet({
-    super.key,
-    required this.msg,
-    this.onRemoveReaction,
-  });
-
-  @override
-  State<ReactionUsersSheet> createState() => _ReactionUsersSheetState();
-}
-
-class _ReactionUsersSheetState extends State<ReactionUsersSheet> {
-  String _selected = 'all';
-
-  @override
-  Widget build(BuildContext context) {
-    final summary = widget.msg.reactionSummary;
-    final byUser = widget.msg.reactionByUser;
-
-    final tabs = <MapEntry<String, String>>[
-      MapEntry('all', 'Tất cả'),
-      ...summary.keys.map((e) => MapEntry(e, e)),
-    ];
-
-    final entries = byUser.entries.where((e) {
-      if (_selected == 'all') return true;
-      return e.value.contains(_selected);
-    }).toList();
-
-    return SafeArea(
-      child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.42,
-        child: Column(
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 48,
-              height: 5,
-              decoration: BoxDecoration(
-                color: const Color(0xFFD6D6D6),
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            SizedBox(
-              height: 56,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                itemCount: tabs.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (_, i) {
-                  final key = tabs[i].key;
-                  final label = tabs[i].value;
-                  final selected = _selected == key;
-
-                  final count = key == 'all'
-                      ? widget.msg.reactionCount
-                      : (summary[key] ?? 0);
-
-                  return GestureDetector(
-                    onTap: () => setState(() => _selected = key),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: selected ? Colors.black : Colors.transparent,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Row(
-                        children: [
-                          Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: selected
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              color: const Color(0xFF232323),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '$count',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: Color(0xFF707070),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            const Divider(height: 1),
-
-            Expanded(
-              child: ListView.separated(
-                itemCount: entries.length,
-                separatorBuilder: (_, __) =>
-                    const Divider(height: 1, color: Color(0xFFF0F0F0)),
-                itemBuilder: (_, i) {
-                  final user = entries[i].key;
-                  final emojis = entries[i].value;
-
-                  return InkWell(
-                    onTap: () {
-                      widget.onRemoveReaction?.call(user);
-                      Navigator.pop(context);
-                    },
-                    child: Container(
-                      color: const Color(0xFFEAF6FF),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 22,
-                            backgroundColor: const Color(0xFFE0E0E0),
-                            child: Text(
-                              user.isNotEmpty ? user[0].toUpperCase() : '?',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  user,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const Text(
-                                  'Ấn vào để gỡ',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ...emojis.map(
-                                (e) => Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 1,
-                                  ),
-                                  child: Text(
-                                    e,
-                                    style: const TextStyle(fontSize: 22),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '${emojis.length}',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  color: Color(0xFF4A4A4A),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -98,4 +98,20 @@ List<Chatmsgobject> Chatmsgobjects = [
     ..IdMsg = "9"
     ..Send_Date = DateTime(2026, 4, 02)
     ..isMe = false,
+    Chatmsgobject()
+    ..User_Name = "MinhNQ"
+    ..Comment = "Nguyễn Quang Minh"
+    ..Note = "Duyệt tin nhắn"
+    ..IdMsg = "10"
+    ..Send_Date = DateTime(2026, 4, 03)
+    ..isMe = false
+    ..isApprove = true,
+    Chatmsgobject()
+    ..User_Name = "MinhNQ"
+    ..Comment = "Nguyễn Quang Minh"
+    ..Note = "Tin nhắn cần duyệt"
+    ..IdMsg = "11"
+    ..Send_Date = DateTime(2026, 4, 04)
+    ..isMe = true
+    ..isApprove = true
 ];

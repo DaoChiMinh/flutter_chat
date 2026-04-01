@@ -78,6 +78,7 @@ class Chatmsgobject {
     return map;
   }
 
+  //remove reaction
   void removeReactionOfUser(String userName) {
     reactions.removeWhere((e) => e.userName == userName);
   }
