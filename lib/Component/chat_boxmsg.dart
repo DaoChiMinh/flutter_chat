@@ -211,7 +211,10 @@ class _MessageBubble extends StatelessWidget {
 
     if (msg.isRecalled) {
       return GestureDetector(
-        onLongPress: () => _showMessageActions(context),
+        onLongPress: () async {
+          FocusManager.instance.primaryFocus?.unfocus();
+          await _showMessageActions(context);
+        },
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
@@ -255,6 +258,7 @@ class _MessageBubble extends StatelessWidget {
 
     return GestureDetector(
       onLongPress: () async {
+        FocusManager.instance.primaryFocus?.unfocus();
         await _showMessageActions(context);
       },
       child: Container(
@@ -596,42 +600,50 @@ class _MessageBubble extends StatelessWidget {
     if (result == null || !context.mounted) return;
 
     switch (result.type) {
+      case 'reply':
+        onReply?.call(msg);
+        break;
+
       case 'reaction':
+        FocusManager.instance.primaryFocus?.unfocus();
         onReaction?.call(msg, result.reactionEmoji!);
         break;
 
       case 'approved':
+        FocusManager.instance.primaryFocus?.unfocus();
         onApproveStatus?.call(msg, 'approved');
         break;
 
       case 'rejected':
+        FocusManager.instance.primaryFocus?.unfocus();
         onApproveStatus?.call(msg, 'rejected');
         break;
 
       case 'copy':
+        FocusManager.instance.primaryFocus?.unfocus();
         await Clipboard.setData(ClipboardData(text: msg.Note));
         showSnackBar(context, 'Đã sao chép');
         break;
 
       case 'pin':
+        FocusManager.instance.primaryFocus?.unfocus();
         onPin?.call(msg);
         showSnackBar(context, msg.isPinned ? 'Đã ghim' : 'Đã bỏ ghim');
         break;
 
-      case 'reply':
-        onReply?.call(msg);
-        break;
-
       case 'forward':
+        FocusManager.instance.primaryFocus?.unfocus();
         onForward?.call(msg);
         showSnackBar(context, 'Xử lí chuyển tiếp');
         break;
 
       case 'recall':
+        FocusManager.instance.primaryFocus?.unfocus();
         onRecall?.call(msg);
         break;
 
       case 'delete':
+        FocusManager.instance.primaryFocus?.unfocus();
         final ok = await confirmDelete(context);
         if (ok) {
           onDelete?.call(msg);
