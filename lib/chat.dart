@@ -3,6 +3,7 @@ import 'package:flutter_chat/Component/chat_boxmsg.dart';
 import 'package:flutter_chat/Component/chat_input.dart';
 import 'package:flutter_chat/Component/chat_pin_message.dart';
 import 'package:flutter_chat/Component/chat_reply_preview.dart';
+import 'package:flutter_chat/Component/chat_search.dart';
 import 'package:flutter_chat/Module/chatData.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
@@ -27,9 +28,11 @@ class _ChatpageState extends State<Chatpage> {
 
   Chatmsgobject? _replyingMsg;
   final ChatPinController _pinController = ChatPinController();
-  bool _isSearching = false;
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  List<String> _searchMatchedIds = [];
+  int _searchCurrentIndex = -1;
+  String _searchKeyword = '';
 
   @override
   void dispose() {
@@ -48,6 +51,7 @@ class _ChatpageState extends State<Chatpage> {
     });
   }
 
+  //xử lí duyệt
   void _handleApproveStatus(Chatmsgobject msg, String status) {
     final list = [..._msgsNotifier.value];
     final i = list.indexWhere((e) => e.IdMsg == msg.IdMsg);
@@ -64,20 +68,6 @@ class _ChatpageState extends State<Chatpage> {
       msgsNotifier: _msgsNotifier,
       onStateChanged: () => setState(() {}),
     );
-  }
-
-  void _toggleSearch() {
-    setState(() {
-      _isSearching = !_isSearching;
-
-      if (!_isSearching) {
-        _searchCtrl.clear();
-      }
-    });
-
-    if (_isSearching) {
-      Future.microtask(() => _searchFocusNode.requestFocus());
-    }
   }
 
   // ================= REACTION =================
@@ -163,65 +153,21 @@ class _ChatpageState extends State<Chatpage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.red,
-        title: _isSearching
-            ? Container(
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: TextField(
-                  controller: _searchCtrl,
-                  focusNode: _searchFocusNode,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    hintText: 'Tìm trong đoạn chat',
-                    hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    suffixIcon: _searchCtrl.text.isNotEmpty
-                        ? IconButton(
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              setState(() {});
-                            },
-                            icon: const Icon(Icons.close, size: 18),
-                          )
-                        : null,
-                  ),
-                  onChanged: (_) {
-                    setState(() {});
-                  },
-                ),
-              )
-            : const Text("Chat", style: TextStyle(color: Colors.white)),
-
-        actions: [
-          if (_isSearching)
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: Center(
-                child: Text(
-                  '0/0',
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                ),
-              ),
-            ),
-
-          IconButton(
-            onPressed: _toggleSearch,
-            icon: Icon(
-              _isSearching ? Icons.close : Icons.search,
-              color: Colors.white,
-            ),
-          ),
-        ],
+      appBar: ChatSearch(
+        messages: _msgsNotifier.value,
+        onJumpToMessage: _scrollToMessage,
+        onCloseSearch: () {
+          FocusManager.instance.primaryFocus?.unfocus();
+        },
+        onSearchChanged: (keyword, matchedIds, currentMatchedId) {
+          setState(() {
+            _searchKeyword = keyword;
+            _searchMatchedIds = matchedIds;
+            _searchCurrentIndex = currentMatchedId == null
+                ? -1
+                : matchedIds.indexOf(currentMatchedId);
+          });
+        },
       ),
       resizeToAvoidBottomInset: true,
       body: Container(
@@ -260,6 +206,11 @@ class _ChatpageState extends State<Chatpage> {
                       onPin: _handlePin,
                       onForward: _handleForward,
                       onApproveStatus: _handleApproveStatus,
+                      searchKeyword: _searchKeyword,
+                      matchedMessageIds: _searchMatchedIds,
+                      currentMatchedMessageId: _searchCurrentIndex >= 0
+                          ? _searchMatchedIds[_searchCurrentIndex]
+                          : null,
                     );
                   },
                 ),

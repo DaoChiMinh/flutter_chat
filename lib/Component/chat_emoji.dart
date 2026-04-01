@@ -210,7 +210,7 @@ class _ChatEmojiPanelState extends State<ChatEmojiPanel>
     _stickerPacks = _buildStickerPacks();
     _tabCtrl = TabController(length: _totalTabs, vsync: this);
   }
-
+  
   List<StickerPack> _buildStickerPacks() {
     final packs = <StickerPack>[];
     for (final url in _stickerUrls) {

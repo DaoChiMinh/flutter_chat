@@ -44,7 +44,8 @@ List<Chatmsgobject> Chatmsgobjects = [
       "https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4",
     ]
     ..strTypeFile = "mp4"
-    ..isMe = true,
+    ..isMe = true
+    ..isApprove = true,
   Chatmsgobject()
     ..Comment = "Nguyễn Quang Minh"
     ..Note = "Mở link preview"
@@ -52,7 +53,8 @@ List<Chatmsgobject> Chatmsgobjects = [
     ..Send_Date = DateTime.now()
     ..strDataFile = ["https://openai.com"]
     ..strTypeFile = "url"
-    ..isMe = true,
+    ..isMe = true
+    ..isApprove = true,
   Chatmsgobject()
     ..Comment = "Nguyễn Quang Minh"
     ..Note = "Link ảnh"
@@ -69,7 +71,8 @@ List<Chatmsgobject> Chatmsgobjects = [
       // "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200"
     ]
     ..strTypeFile = "jpg"
-    ..isMe = false,
+    ..isMe = false
+    ..isApprove = true,
   Chatmsgobject()
     ..Comment = "Nguyễn Quang Minh"
     ..Note = "Link file"
@@ -77,7 +80,8 @@ List<Chatmsgobject> Chatmsgobjects = [
     ..Send_Date = DateTime.now()
     ..strDataFile = ["https://www.orimi.com/pdf-test.pdf"]
     ..strTypeFile = "pdf"
-    ..isMe = true,
+    ..isMe = true
+    ..isApprove = true,
   Chatmsgobject()
     ..Comment = "Nguyễn Quang Minh"
     ..Note = "abc.com"

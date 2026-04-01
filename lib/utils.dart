@@ -48,6 +48,14 @@ bool shouldShowNoteText(ChatmsgObjtype type) {
 }
 
 String formatDate(DateTime? dt) {
+  if (dt == null) return '';
+  final dd = dt.day.toString().padLeft(2, '0');
+  final mm = dt.month.toString().padLeft(2, '0');
+  final yyyy = dt.year.toString();
+  return '$dd/$mm/$yyyy';
+}
+
+String formatTime(DateTime? dt) {
   if (dt == null) return "";
   final hh = dt.hour.toString().padLeft(2, '0');
   final mm = dt.minute.toString().padLeft(2, '0');

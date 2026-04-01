@@ -94,7 +94,7 @@ class Chatmsgobject {
     }
     return map;
   }
-
+  
   bool get hasUrlPreview =>
       titleUrl != null || descriptioneUrl != null || ImageUrl != null;
 

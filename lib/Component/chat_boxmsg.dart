@@ -1,7 +1,3 @@
-import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_chat/Component/chat_approved.dart';
@@ -30,7 +26,9 @@ class ChatMessage extends StatefulWidget {
   final ItemScrollController? itemScrollController;
   final void Function(Chatmsgobject msg, String emoji)? onReaction;
   final void Function(Chatmsgobject msg, String status)? onApproveStatus;
-
+  final String searchKeyword;
+  final List<String> matchedMessageIds;
+  final String? currentMatchedMessageId;
   const ChatMessage({
     super.key,
     required this.currentUser,
@@ -45,6 +43,9 @@ class ChatMessage extends StatefulWidget {
     this.onReaction,
     this.onRemoveMyReaction,
     this.onApproveStatus,
+    this.searchKeyword = '',
+    this.matchedMessageIds = const [],
+    this.currentMatchedMessageId,
   });
 
   @override
@@ -57,14 +58,6 @@ class _ChatMessageState extends State<ChatMessage> {
   bool _isSameDay(DateTime? a, DateTime? b) {
     if (a == null || b == null) return false;
     return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
-
-  String _formatDateOnly(DateTime? dt) {
-    if (dt == null) return '';
-    final dd = dt.day.toString().padLeft(2, '0');
-    final mm = dt.month.toString().padLeft(2, '0');
-    final yyyy = dt.year.toString();
-    return '$dd/$mm/$yyyy';
   }
 
   void _clearApproveActions() {
@@ -125,7 +118,7 @@ class _ChatMessageState extends State<ChatMessage> {
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        _formatDateOnly(msg.Send_Date),
+                        formatDate(msg.Send_Date),
                         style: const TextStyle(
                           fontSize: 12,
                           color: Colors.black54,
@@ -163,6 +156,9 @@ class _ChatMessageState extends State<ChatMessage> {
                     }
                   });
                 },
+                searchKeyword: widget.searchKeyword,
+                matchedMessageIds: widget.matchedMessageIds,
+                currentMatchedMessageId: widget.currentMatchedMessageId,
               ),
             ],
           );
@@ -186,6 +182,9 @@ class _MessageBubble extends StatelessWidget {
   final void Function(Chatmsgobject msg, String status)? onApproveStatus;
   final bool showApproveActions;
   final VoidCallback? onToggleApproveActions;
+  final String searchKeyword;
+  final List<String> matchedMessageIds;
+  final String? currentMatchedMessageId;
 
   const _MessageBubble({
     super.key,
@@ -202,6 +201,9 @@ class _MessageBubble extends StatelessWidget {
     this.onApproveStatus,
     this.showApproveActions = false,
     this.onToggleApproveActions,
+    this.searchKeyword = '',
+    this.matchedMessageIds = const [],
+    this.currentMatchedMessageId,
   });
 
   @override
@@ -389,6 +391,9 @@ class _MessageBubble extends StatelessWidget {
                               child: ChatMessageText(
                                 text: extraText,
                                 isRecalled: msg.isRecalled,
+                                keyword: searchKeyword,
+                                isCurrentMatch:
+                                    currentMatchedMessageId == msg.IdMsg,
                                 onTapLink: (url) => _openLink(context, url),
                               ),
                             ),
@@ -406,6 +411,9 @@ class _MessageBubble extends StatelessWidget {
                               child: ChatMessageText(
                                 text: msg.Note,
                                 isRecalled: msg.isRecalled,
+                                keyword: searchKeyword,
+                                isCurrentMatch:
+                                    currentMatchedMessageId == msg.IdMsg,
                                 onTapLink: (url) => _openLink(context, url),
                               ),
                             ),
@@ -424,7 +432,7 @@ class _MessageBubble extends StatelessWidget {
                                 const SizedBox(width: 4),
                               ],
                               Text(
-                                formatDate(msg.Send_Date),
+                                formatTime(msg.Send_Date),
                                 style: const TextStyle(
                                   fontSize: 11,
                                   color: Colors.grey,

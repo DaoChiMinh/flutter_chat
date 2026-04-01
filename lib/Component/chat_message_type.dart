@@ -12,12 +12,15 @@ class ChatMessageText extends StatelessWidget {
   final String text;
   final bool isRecalled;
   final ValueChanged<String>? onTapLink;
-
+  final String keyword;
+  final bool isCurrentMatch;
   const ChatMessageText({
     super.key,
     required this.text,
     this.isRecalled = false,
     this.onTapLink,
+    this.keyword = '',
+    this.isCurrentMatch = false,
   });
 
   bool _isProbablyUrl(String value) {
@@ -35,6 +38,48 @@ class ChatMessageText extends StatelessWidget {
     final v = value.trim();
     if (v.startsWith('http://') || v.startsWith('https://')) return v;
     return 'https://$v';
+  }
+
+  InlineSpan _buildHighlightedSpans({
+    required String text,
+    required String keyword,
+    required TextStyle normalStyle,
+    required TextStyle highlightStyle,
+  }) {
+    if (keyword.trim().isEmpty) {
+      return TextSpan(text: text, style: normalStyle);
+    }
+
+    final lowerText = text.toLowerCase();
+    final lowerKeyword = keyword.toLowerCase();
+
+    final spans = <TextSpan>[];
+    int start = 0;
+
+    while (true) {
+      final index = lowerText.indexOf(lowerKeyword, start);
+      if (index < 0) {
+        spans.add(TextSpan(text: text.substring(start), style: normalStyle));
+        break;
+      }
+
+      if (index > start) {
+        spans.add(
+          TextSpan(text: text.substring(start, index), style: normalStyle),
+        );
+      }
+
+      spans.add(
+        TextSpan(
+          text: text.substring(index, index + keyword.length),
+          style: highlightStyle,
+        ),
+      );
+
+      start = index + keyword.length;
+    }
+
+    return TextSpan(children: spans);
   }
 
   @override
@@ -63,7 +108,23 @@ class ChatMessageText extends StatelessWidget {
     );
 
     final matches = tokenReg.allMatches(text).toList(growable: false);
-    if (matches.isEmpty) return Text(text, style: styleNormal);
+    if (matches.isEmpty) {
+      return RichText(
+        text: _buildHighlightedSpans(
+          text: text,
+          keyword: keyword,
+          normalStyle: styleNormal,
+          highlightStyle: TextStyle(
+            fontSize: 15,
+            color: Colors.black,
+            backgroundColor: isCurrentMatch
+                ? Colors.orangeAccent
+                : Colors.yellowAccent,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
 
     final spans = <InlineSpan>[];
     int current = 0;
@@ -96,7 +157,21 @@ class ChatMessageText extends StatelessWidget {
       spans.add(TextSpan(text: text.substring(current), style: styleNormal));
     }
 
-    return RichText(text: TextSpan(children: spans));
+    return RichText(
+      text: _buildHighlightedSpans(
+        text: text,
+        keyword: keyword,
+        normalStyle: styleNormal,
+        highlightStyle: TextStyle(
+          fontSize: 15,
+          color: Colors.black,
+          backgroundColor: isCurrentMatch
+              ? Colors.orangeAccent
+              : Colors.yellowAccent,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
   }
 }
 
@@ -143,13 +218,13 @@ class ChatMessageImage extends StatelessWidget {
         data,
         fit: BoxFit.cover,
         height: 200,
-        errorBuilder: (_, __, ___) => _buildError(),
+        errorBuilder: (_, _, _) => _buildError(),
       );
     } else if (File(data).existsSync()) {
       child = Image.file(
         File(data),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildError(),
+        errorBuilder: (_, _, _) => _buildError(),
       );
     } else if (_isBase64) {
       final bytes = _decodeBase64(data);
@@ -158,7 +233,7 @@ class ChatMessageImage extends StatelessWidget {
           : Image.memory(
               bytes,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _buildError(),
+              errorBuilder: (_, _, _) => _buildError(),
             );
     } else {
       child = _buildError();
@@ -329,7 +404,7 @@ class _ChatMessageUrlState extends State<ChatMessageUrl> {
                 child: Image.network(
                   msg.ImageUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  errorBuilder: (_, _, _) => Container(
                     color: const Color(0xFFF0F2F5),
                     alignment: Alignment.center,
                     child: const Icon(
@@ -608,7 +683,6 @@ class _ChatVideoThumbState extends State<ChatVideoThumb> {
     _controller?.dispose();
     super.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
