@@ -88,7 +88,10 @@ class _ChatMessageState extends State<ChatMessage> {
 
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
-      onTap: _clearApproveActions,
+      onTap: () {
+        FocusScope.of(context).unfocus();
+        _clearApproveActions();
+      },
       child: ScrollablePositionedList.builder(
         itemScrollController: widget.itemScrollController,
         reverse: true,
@@ -386,7 +389,8 @@ class _MessageBubble extends StatelessWidget {
                               ),
                             ),
 
-                          if (shouldShowNoteText(type) && msg.Note.trim().isNotEmpty)
+                          if (shouldShowNoteText(type) &&
+                              msg.Note.trim().isNotEmpty)
                             Padding(
                               padding: EdgeInsets.only(
                                 top:
@@ -464,7 +468,6 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
-
   String _getExtraText(Chatmsgobject msg) {
     var text = msg.Note.trim();
     if (text.isEmpty) return '';
@@ -481,7 +484,6 @@ class _MessageBubble extends StatelessWidget {
 
     return text.trim();
   }
-
 
   Future<void> _openLink(BuildContext context, String url) async {
     final raw = url.trim();
@@ -639,6 +641,3 @@ class _MessageBubble extends StatelessWidget {
     }
   }
 }
-
-
-
