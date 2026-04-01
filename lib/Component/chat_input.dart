@@ -71,7 +71,7 @@ class ChatInput extends StatefulWidget {
   final bool showAttachMenu; // ★ NEW
   final ValueChanged<bool> onShowEmojiChanged;
   final ValueChanged<bool> onShowGalleryChanged;
-  final ValueChanged<bool> onShowAttachMenuChanged;
+  final ValueChanged<bool> onShowAttachMenuChanged; 
   //Thêm focus node từ ngoài
   final FocusNode? externalFocusNode; // ★ NEW
 
@@ -82,12 +82,10 @@ class ChatInput extends StatefulWidget {
 class _ChatInputState extends State<ChatInput> {
   final _textController = TextEditingController();
   late final FocusNode _focusNode;
-  late final bool _isExternalFocusNode;
   @override
   void initState() {
     super.initState();
     _focusNode = widget.externalFocusNode ?? FocusNode();
-    _isExternalFocusNode = widget.externalFocusNode != null;
   }
 
   var _state = const ChatInputState();
@@ -104,9 +102,7 @@ class _ChatInputState extends State<ChatInput> {
   void dispose() {
     _urlDetectTimer?.cancel();
     _textController.dispose();
-    if (!_isExternalFocusNode) {
-      _focusNode.dispose();
-    }
+    _focusNode.dispose();
     _voiceController.dispose();
     super.dispose();
   }
@@ -352,7 +348,7 @@ class _ChatInputState extends State<ChatInput> {
         ..Comment = "minhdc"
         ..isMe = true
         ..Note = text
-        ..Send_Date = DateTime.now(),
+        ..Send_Date = DateTime.now()
     );
   }
 
