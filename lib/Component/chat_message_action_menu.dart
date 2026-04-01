@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_chat/Component/chat_approved.dart';
-import 'package:flutter_chat/Component/chat_boxmsg.dart';
 import 'package:flutter_chat/Component/chat_image_gallery.dart';
 import 'package:flutter_chat/Component/chat_media_grid.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
@@ -35,7 +34,7 @@ class ChatMenuAction {
   final String label;
   final IconData icon;
   final Color color;
-  final bool isNew; // badge "MỚI"
+  final bool isNew; 
   final bool isDestructive;
 
   const ChatMenuAction({

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' as focusManager;
 import 'package:flutter/services.dart';
 import 'package:flutter_chat/Component/chat_approved.dart';
 import 'package:flutter_chat/Component/chat_audio.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_chat/Component/chat_image_gallery.dart';
 import 'package:flutter_chat/Component/chat_media_grid.dart';
 import 'package:flutter_chat/Component/chat_message_action_menu.dart';
 import 'package:flutter_chat/Component/chat_message_type.dart';
+import 'package:flutter_chat/Component/chat_pin_message.dart';
 import 'package:flutter_chat/Component/chat_react.dart';
 import 'package:flutter_chat/Component/chat_reply_preview.dart';
 import 'package:flutter_chat/Component/chat_view_page.dart';
@@ -15,34 +17,26 @@ import 'package:flutter_chat/utils.dart';
 
 class ChatMessage extends StatefulWidget {
   final String currentUser;
-  final List<Chatmsgobject> msgs;
-  final ValueChanged<Chatmsgobject>? onReply;
-  final ValueChanged<Chatmsgobject>? onRecall;
-  final ValueChanged<Chatmsgobject>? onDelete;
-  final ValueChanged<String>? onTapReplyPreview;
-  final ValueChanged<Chatmsgobject>? onRemoveMyReaction;
-  final ValueChanged<Chatmsgobject>? onPin;
-  final ValueChanged<Chatmsgobject>? onForward;
+  final ValueNotifier<List<Chatmsgobject>> msgsNotifier;
+  final ChatPinController pinController;
+  final ValueChanged<Chatmsgobject>? onReplySelected;
+  final VoidCallback? onCloseOverlays;
+  final VoidCallback? onRefreshPinnedBar;
+  final FocusNode? inputFocusNode;
   final ItemScrollController? itemScrollController;
-  final void Function(Chatmsgobject msg, String emoji)? onReaction;
-  final void Function(Chatmsgobject msg, String status)? onApproveStatus;
   final String searchKeyword;
   final List<String> matchedMessageIds;
   final String? currentMatchedMessageId;
   const ChatMessage({
     super.key,
     required this.currentUser,
-    required this.msgs,
-    this.onReply,
-    this.onRecall,
-    this.onDelete,
-    this.onTapReplyPreview,
-    this.onPin,
-    this.onForward,
+    required this.msgsNotifier,
+    required this.pinController,
+    this.onReplySelected,
+    this.onCloseOverlays,
+    this.onRefreshPinnedBar,
+    this.inputFocusNode,
     this.itemScrollController,
-    this.onReaction,
-    this.onRemoveMyReaction,
-    this.onApproveStatus,
     this.searchKeyword = '',
     this.matchedMessageIds = const [],
     this.currentMatchedMessageId,
@@ -60,110 +54,186 @@ class _ChatMessageState extends State<ChatMessage> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  void _clearApproveActions() {
-    if (_longPressedApproveMsgId != null) {
-      setState(() {
-        _longPressedApproveMsgId = null;
-      });
-    }
+  void _handleApproveStatus(Chatmsgobject msg, String status) {
+    final list = [...widget.msgsNotifier.value];
+    final i = list.indexWhere((e) => e.IdMsg == msg.IdMsg);
+    if (i == -1) return;
+    list[i].approvedStatus = status;
+    widget.msgsNotifier.value = list;
+  }
+
+  void _handlePin(Chatmsgobject msg) {
+    widget.pinController.togglePin(
+      msg: msg,
+      msgsNotifier: widget.msgsNotifier,
+      onStateChanged: widget.onRefreshPinnedBar,
+    );
+  }
+
+  void _handleReaction(Chatmsgobject msg, String emoji) {
+    final list = [...widget.msgsNotifier.value];
+    final i = list.indexWhere((e) => e.IdMsg == msg.IdMsg);
+    if (i == -1) return;
+    list[i].setReaction(widget.currentUser, emoji);
+    widget.msgsNotifier.value = list;
+  }
+
+  void _handleRemoveMyReaction(Chatmsgobject msg) {
+    final list = [...widget.msgsNotifier.value];
+    final i = list.indexWhere((e) => e.IdMsg == msg.IdMsg);
+    if (i == -1) return;
+    list[i].removeReactionOfUser(widget.currentUser);
+    widget.msgsNotifier.value = list;
+  }
+
+  void _handleReply(Chatmsgobject msg) {
+    widget.onReplySelected?.call(msg);
+    widget.onCloseOverlays?.call();
+    Future.delayed(const Duration(milliseconds: 50), () {
+      widget.inputFocusNode?.requestFocus();
+    });
+  }
+
+  void _handleRecall(Chatmsgobject msg) {
+    final list = [...widget.msgsNotifier.value];
+    final i = list.indexWhere((e) => e.IdMsg == msg.IdMsg);
+    if (i == -1) return;
+    list[i].isRecalled = true;
+    list[i].Note = "Tin nhắn đã được thu hồi";
+    list[i].strDataFile = [];
+    list[i].strTypeFile = "";
+    list[i].replyMsg = null;
+    widget.msgsNotifier.value = list;
+  }
+
+  void _handleDelete(Chatmsgobject msg) {
+    widget.msgsNotifier.value = widget.msgsNotifier.value
+        .where((e) => e.IdMsg != msg.IdMsg)
+        .toList();
+    widget.pinController.removeDeletedMessage(
+      msg.IdMsg,
+      onStateChanged: widget.onRefreshPinnedBar,
+    );
+    focusManager.primaryFocus?.unfocus();
+  }
+
+  void _handleForward(Chatmsgobject msg) {
+    if (msg.isRecalled) return;
+    debugPrint("Forward message: ${msg.IdMsg}");
+  }
+
+  void _scrollToMessage(String idMsg) {
+    final list = widget.msgsNotifier.value;
+    final index = list.indexWhere((e) => e.IdMsg == idMsg);
+    if (index == -1 || widget.itemScrollController == null) return;
+    final reverseIndex = list.length - 1 - index;
+    widget.itemScrollController!.scrollTo(
+      index: reverseIndex,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.msgs.isEmpty) {
-      return const Center(
-        child: Text(
-          "Hãy khởi đầu cuộc trò chuyện bằng một tin nhắn 😀",
-          style: TextStyle(color: Colors.grey),
-        ),
-      );
-    }
+    return ValueListenableBuilder<List<Chatmsgobject>>(
+      valueListenable: widget.msgsNotifier,
+      builder: (context, msgs, _) {
+        if (msgs.isEmpty) {
+          return const Center(
+            child: Text(
+              "Hãy khởi đầu cuộc trò chuyện bằng một tin nhắn 😀",
+              style: TextStyle(color: Colors.grey),
+            ),
+          );
+        }
 
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onTap: () {
-        FocusScope.of(context).unfocus();
-        _clearApproveActions();
-      },
-      child: ScrollablePositionedList.builder(
-        itemScrollController: widget.itemScrollController,
-        reverse: true,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        itemCount: widget.msgs.length,
-        itemBuilder: (context, index) {
-          final originalIndex = widget.msgs.length - 1 - index;
-          final msg = widget.msgs[originalIndex];
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () {
+            focusManager.primaryFocus?.unfocus();
+          },
+          child: ScrollablePositionedList.builder(
+            itemScrollController: widget.itemScrollController,
+            reverse: true,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            itemCount: msgs.length,
+            itemBuilder: (context, index) {
+              final originalIndex = msgs.length - 1 - index;
+              final msg = msgs[originalIndex];
 
-          final Chatmsgobject? prevMsgInTime = originalIndex > 0
-              ? widget.msgs[originalIndex - 1]
-              : null;
+              final Chatmsgobject? prevMsgInTime = originalIndex > 0
+                  ? msgs[originalIndex - 1]
+                  : null;
 
-          final bool showDateHeader =
-              prevMsgInTime == null ||
-              !_isSameDay(msg.Send_Date, prevMsgInTime.Send_Date);
+              final bool showDateHeader =
+                  prevMsgInTime == null ||
+                  !_isSameDay(msg.Send_Date, prevMsgInTime.Send_Date);
 
-          return Column(
-            children: [
-              if (showDateHeader)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        formatDate(msg.Send_Date),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w500,
+              return Column(
+                children: [
+                  if (showDateHeader)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            formatDate(msg.Send_Date),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ),
                     ),
+                  _MessageBubble(
+                    key: ValueKey(msg.IdMsg),
+                    currentUser: widget.currentUser,
+                    msg: msg,
+                    onReply: _handleReply,
+                    onRecall: _handleRecall,
+                    onDelete: _handleDelete,
+                    onTapReplyPreview: _scrollToMessage,
+                    onReaction: _handleReaction,
+                    onRemoveMyReaction: _handleRemoveMyReaction,
+                    onPin: _handlePin,
+                    onForward: _handleForward,
+                    onApproveStatus: (targetMsg, status) {
+                      _handleApproveStatus(targetMsg, status);
+                      setState(() {
+                        _longPressedApproveMsgId = null;
+                      });
+                    },
+                    showApproveActions: _longPressedApproveMsgId == msg.IdMsg,
+                    onToggleApproveActions: () {
+                      setState(() {
+                        if (_longPressedApproveMsgId == msg.IdMsg) {
+                          _longPressedApproveMsgId = null;
+                        } else {
+                          _longPressedApproveMsgId = msg.IdMsg;
+                        }
+                      });
+                    },
+                    searchKeyword: widget.searchKeyword,
+                    matchedMessageIds: widget.matchedMessageIds,
+                    currentMatchedMessageId: widget.currentMatchedMessageId,
                   ),
-                ),
-              _MessageBubble(
-                key: ValueKey(msg.IdMsg),
-                currentUser: widget.currentUser,
-                msg: msg,
-                onReply: widget.onReply,
-                onRecall: widget.onRecall,
-                onDelete: widget.onDelete,
-                onTapReplyPreview: widget.onTapReplyPreview,
-                onReaction: widget.onReaction,
-                onRemoveMyReaction: widget.onRemoveMyReaction,
-                onPin: widget.onPin,
-                onForward: widget.onForward,
-                onApproveStatus: (targetMsg, status) {
-                  widget.onApproveStatus?.call(targetMsg, status);
-                  setState(() {
-                    _longPressedApproveMsgId = null;
-                  });
-                },
-                showApproveActions: _longPressedApproveMsgId == msg.IdMsg,
-                onToggleApproveActions: () {
-                  setState(() {
-                    if (_longPressedApproveMsgId == msg.IdMsg) {
-                      _longPressedApproveMsgId = null;
-                    } else {
-                      _longPressedApproveMsgId = msg.IdMsg;
-                    }
-                  });
-                },
-                searchKeyword: widget.searchKeyword,
-                matchedMessageIds: widget.matchedMessageIds,
-                currentMatchedMessageId: widget.currentMatchedMessageId,
-              ),
-            ],
-          );
-        },
-      ),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
@@ -214,7 +284,7 @@ class _MessageBubble extends StatelessWidget {
     if (msg.isRecalled) {
       return GestureDetector(
         onLongPress: () async {
-          FocusManager.instance.primaryFocus?.unfocus();
+          focusManager.primaryFocus?.unfocus();
           await _showMessageActions(context);
         },
         child: Container(
