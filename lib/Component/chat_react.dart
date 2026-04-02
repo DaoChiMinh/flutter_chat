@@ -92,7 +92,7 @@ class _ReactionUsersSheetState extends State<ReactionUsersSheet> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 itemCount: tabs.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
                 itemBuilder: (_, i) {
                   final key = tabs[i].key;
                   final label = tabs[i].value;
@@ -146,7 +146,7 @@ class _ReactionUsersSheetState extends State<ReactionUsersSheet> {
             Expanded(
               child: ListView.separated(
                 itemCount: entries.length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (_, _) =>
                     const Divider(height: 1, color: Color(0xFFF0F0F0)),
                 itemBuilder: (_, i) {
                   final user = entries[i].key;

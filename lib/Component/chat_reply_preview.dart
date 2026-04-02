@@ -105,7 +105,7 @@ class ReplyInputPreview extends StatelessWidget {
       image = Image.asset(
         path,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
+        errorBuilder: (_, _, _) => Container(
           color: Colors.black12,
           alignment: Alignment.center,
           child: const Icon(Icons.image),
@@ -206,7 +206,7 @@ class ReplyPreview extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildReplyContent(ChatmsgObjtype type) {
     if (reply.isRecalled) {
       return const Text(
@@ -271,7 +271,7 @@ class ReplyPreview extends StatelessWidget {
         );
     }
   }
-    
+
   Widget _replyMediaPreview({required Widget child, required String text}) {
     return SizedBox(
       height: 40,

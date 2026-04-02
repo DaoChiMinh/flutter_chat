@@ -41,7 +41,7 @@ class ChatMessageVideo extends StatelessWidget {
                   ? Image(
                       image: thumbnail!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _fallback(),
+                      errorBuilder: (_, _, _) => _fallback(),
                     )
                   : _fallback(),
             ),
@@ -535,7 +535,7 @@ class ChatDocViewerPage extends StatelessWidget {
       ).showSnackBar(const SnackBar(content: Text('Không thể mở tệp')));
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

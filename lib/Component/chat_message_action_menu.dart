@@ -34,7 +34,7 @@ class ChatMenuAction {
   final String label;
   final IconData icon;
   final Color color;
-  final bool isNew; 
+  final bool isNew;
   final bool isDestructive;
 
   const ChatMenuAction({
@@ -530,9 +530,9 @@ class _MessagePreviewBubble extends StatelessWidget {
     );
   }
 
-  String _displayDomain(String _url) {
-    final uri = Uri.tryParse(_url);
-    return uri?.host ?? _url;
+  String _displayDomain(String url) {
+    final uri = Uri.tryParse(url);
+    return uri?.host ?? url;
   }
 }
 

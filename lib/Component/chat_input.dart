@@ -60,7 +60,7 @@ class ChatInput extends StatefulWidget {
     required this.onShowEmojiChanged,
     required this.onShowGalleryChanged,
     required this.onShowAttachMenuChanged,
-    FocusNode? this.externalFocusNode, // ★ NEW
+    this.externalFocusNode, // ★ NEW
     this.onRefreshMessages,
   });
 
@@ -110,7 +110,7 @@ class _ChatInputState extends State<ChatInput> {
     _voiceController.dispose();
     super.dispose();
   }
-                                                                        
+
   // ----------------------------------------------------------
   // Text & URL detection
   // ----------------------------------------------------------
@@ -660,7 +660,7 @@ class _SmartUrlPreview extends StatelessWidget {
                   child: Image.network(
                     urlState.url,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (_, _, _) => Container(
                       color: const Color(0xFFF0F2F5),
                       alignment: Alignment.center,
                       child: const Icon(
@@ -741,7 +741,7 @@ class _SmartUrlPreview extends StatelessWidget {
                 child: Image.network(
                   urlState.metadata!.imageUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
                 ),
               ),
             Padding(
