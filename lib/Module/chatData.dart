@@ -98,7 +98,7 @@ List<Chatmsgobject> Chatmsgobjects = [
     ..isMe = false,
   Chatmsgobject()
     ..Comment = "Nguyễn Quang Minh"
-    ..Note = "Ngày mai đi chơi không"
+    ..Note = "How are you?"
     ..IdMsg = "9"
     ..Send_Date = DateTime(2026, 4, 02)
     ..isMe = false,

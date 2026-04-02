@@ -535,7 +535,7 @@ class ChatDocViewerPage extends StatelessWidget {
       ).showSnackBar(const SnackBar(content: Text('Không thể mở tệp')));
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -50,20 +50,16 @@ class ChatPinController {
     }
   }
 
-  void togglePanel(VoidCallback onStateChanged) {
-    showPinnedPanel = !showPinnedPanel;
-    onStateChanged();
-  }
-
   List<Chatmsgobject> getPinnedMessages({
     required List<String> pinnedIds,
     required List<Chatmsgobject> msgs,
   }) {
     return pinnedIds
         .map(
-          (id) => msgs.where((e) => e.IdMsg == id).isNotEmpty
-              ? msgs.firstWhere((e) => e.IdMsg == id)
-              : null,
+          (id) => msgs.cast<Chatmsgobject?>().firstWhere(
+            (e) => e?.IdMsg == id,
+            orElse: () => null,
+          ),
         )
         .whereType<Chatmsgobject>()
         .toList();
@@ -97,37 +93,59 @@ class ChatPinController {
   }
 }
 
-class PinnedMessageBar extends StatelessWidget {
+class PinnedMessageBar extends StatefulWidget {
   final ChatPinController pinController;
   final ValueNotifier<List<Chatmsgobject>> msgsNotifier;
-  final VoidCallback onRefresh;
   final ValueChanged<String> onTapPinnedMessage;
   final ValueChanged<Chatmsgobject> onTogglePin;
-    
+
   const PinnedMessageBar({
     super.key,
     required this.pinController,
     required this.msgsNotifier,
-    required this.onRefresh,
     required this.onTapPinnedMessage,
     required this.onTogglePin,
   });
+
+  @override
+  State<PinnedMessageBar> createState() => _PinnedMessageBarState();
+}
+
+class _PinnedMessageBarState extends State<PinnedMessageBar> {
+  void _togglePanel() {
+    setState(() {
+      widget.pinController.showPinnedPanel =
+          !widget.pinController.showPinnedPanel;
+    });
+  }
+
+  void _closePanel() {
+    if (!widget.pinController.showPinnedPanel) return;
+    setState(() {
+      widget.pinController.showPinnedPanel = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         ValueListenableBuilder<List<String>>(
-          valueListenable: pinController.pinnedIdsNotifier,
+          valueListenable: widget.pinController.pinnedIdsNotifier,
           builder: (context, pinnedIds, _) {
-            if (pinnedIds.isEmpty) return const SizedBox.shrink();
+            if (pinnedIds.isEmpty) {
+              return const SizedBox.shrink();
+            }
 
-            final msgs = msgsNotifier.value;
-            final pinnedMsgs = pinController.getPinnedMessages(
+            final msgs = widget.msgsNotifier.value;
+            final pinnedMsgs = widget.pinController.getPinnedMessages(
               pinnedIds: pinnedIds,
               msgs: msgs,
             );
-            if (pinnedMsgs.isEmpty) return const SizedBox.shrink();
+
+            if (pinnedMsgs.isEmpty) {
+              return const SizedBox.shrink();
+            }
 
             final first = pinnedMsgs.first;
             final remain = pinnedMsgs.length - 1;
@@ -139,15 +157,15 @@ class PinnedMessageBar extends StatelessWidget {
                 8,
                 6,
                 8,
-                pinController.showPinnedPanel ? 0 : 6,
+                widget.pinController.showPinnedPanel ? 0 : 6,
               ),
               padding: EdgeInsets.symmetric(
                 horizontal: 10,
-                vertical: pinController.showPinnedPanel ? 8 : 10,
+                vertical: widget.pinController.showPinnedPanel ? 8 : 10,
               ),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: pinController.showPinnedPanel
+                borderRadius: widget.pinController.showPinnedPanel
                     ? const BorderRadius.vertical(top: Radius.circular(14))
                     : BorderRadius.circular(14),
                 boxShadow: const [
@@ -169,20 +187,22 @@ class PinnedMessageBar extends StatelessWidget {
                   Expanded(
                     child: InkWell(
                       borderRadius: BorderRadius.circular(8),
-                      onTap: () => onTapPinnedMessage(first.IdMsg),
+                      onTap: () => widget.onTapPinnedMessage(first.IdMsg),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            pinController.pinnedPreview(first),
+                            widget.pinController.pinnedPreview(first),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: pinController.showPinnedPanel ? 15 : 16,
+                              fontSize: widget.pinController.showPinnedPanel
+                                  ? 15
+                                  : 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          if (!pinController.showPinnedPanel) ...[
+                          if (!widget.pinController.showPinnedPanel) ...[
                             const SizedBox(height: 2),
                             Text(
                               'Tin nhắn của ${first.User_Name.isNotEmpty ? first.User_Name : first.Comment}',
@@ -199,39 +219,22 @@ class PinnedMessageBar extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  if (remain == 0)
-                    InkWell(
-                      borderRadius: BorderRadius.circular(999),
-                      onTap: () => onTogglePin(first),
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0xFFBFC4CC)),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: const Icon(
-                          Icons.remove,
-                          size: 14,
-                          color: Color(0xFF6E7682),
-                        ),
+
+                  InkWell(
+                    borderRadius: BorderRadius.circular(999),
+                    onTap: _togglePanel,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
                       ),
-                    ),
-                  if (remain > 0)
-                    InkWell(
-                      borderRadius: BorderRadius.circular(999),
-                      onTap: () => pinController.togglePanel(onRefresh),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: const Color(0xFFBFC4CC)),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Row(
-                          children: [
+                      decoration: BoxDecoration(
+                        border: Border.all(color: const Color(0xFFBFC4CC)),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        children: [
+                          if (remain > 0) ...[
                             Text(
                               '+$remain',
                               style: const TextStyle(
@@ -241,35 +244,38 @@ class PinnedMessageBar extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 4),
-                            Icon(
-                              pinController.showPinnedPanel
-                                  ? Icons.keyboard_arrow_up
-                                  : Icons.keyboard_arrow_down,
-                              color: const Color(0xFF6E7682),
-                            ),
                           ],
-                        ),
+                          Icon(
+                            widget.pinController.showPinnedPanel
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            color: const Color(0xFF6E7682),
+                          ),
+                        ],
                       ),
                     ),
+                  ),
                 ],
               ),
             );
           },
         ),
-
         AnimatedSize(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeInOut,
-          child: pinController.showPinnedPanel
+          child: widget.pinController.showPinnedPanel
               ? ValueListenableBuilder<List<String>>(
-                  valueListenable: pinController.pinnedIdsNotifier,
+                  valueListenable: widget.pinController.pinnedIdsNotifier,
                   builder: (context, pinnedIds, _) {
-                    final msgs = msgsNotifier.value;
-                    final pinnedMsgs = pinController.getPinnedMessages(
+                    final msgs = widget.msgsNotifier.value;
+                    final pinnedMsgs = widget.pinController.getPinnedMessages(
                       pinnedIds: pinnedIds,
                       msgs: msgs,
                     );
-                    if (pinnedMsgs.isEmpty) return const SizedBox.shrink();
+
+                    if (pinnedMsgs.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
 
                     return Container(
                       margin: const EdgeInsets.fromLTRB(8, 0, 8, 6),
@@ -293,9 +299,10 @@ class PinnedMessageBar extends StatelessWidget {
 
                           return InkWell(
                             onTap: () {
-                              pinController.showPinnedPanel = false;
-                              onRefresh();
-                              Future.microtask(() => onTapPinnedMessage(m.IdMsg));
+                              _closePanel();
+                              Future.microtask(
+                                () => widget.onTapPinnedMessage(m.IdMsg),
+                              );
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -325,7 +332,7 @@ class PinnedMessageBar extends StatelessWidget {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          pinController.pinnedPreview(m),
+                                          widget.pinController.pinnedPreview(m),
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(fontSize: 15),
@@ -344,7 +351,7 @@ class PinnedMessageBar extends StatelessWidget {
                                   const SizedBox(width: 8),
                                   InkWell(
                                     borderRadius: BorderRadius.circular(999),
-                                    onTap: () => onTogglePin(m),
+                                    onTap: () => widget.onTogglePin(m),
                                     child: Container(
                                       width: 28,
                                       height: 28,
@@ -353,7 +360,9 @@ class PinnedMessageBar extends StatelessWidget {
                                         border: Border.all(
                                           color: const Color(0xFFE0E0E0),
                                         ),
-                                        borderRadius: BorderRadius.circular(999),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
                                       ),
                                       child: const Icon(
                                         Icons.remove,

@@ -110,7 +110,7 @@ class _ChatInputState extends State<ChatInput> {
     _voiceController.dispose();
     super.dispose();
   }
-
+                                                                        
   // ----------------------------------------------------------
   // Text & URL detection
   // ----------------------------------------------------------

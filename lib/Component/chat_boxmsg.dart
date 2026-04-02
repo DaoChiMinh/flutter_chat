@@ -16,12 +16,11 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:flutter_chat/utils.dart';
 
 class ChatMessage extends StatefulWidget {
-  final String currentUser;
+  final String currentUser = "Nguyen Quang Minh";
   final ValueNotifier<List<Chatmsgobject>> msgsNotifier;
   final ChatPinController pinController;
   final ValueChanged<Chatmsgobject>? onReplySelected;
   final VoidCallback? onCloseOverlays;
-  final VoidCallback? onRefreshPinnedBar;
   final FocusNode? inputFocusNode;
   final ItemScrollController? itemScrollController;
   final String searchKeyword;
@@ -29,12 +28,10 @@ class ChatMessage extends StatefulWidget {
   final String? currentMatchedMessageId;
   const ChatMessage({
     super.key,
-    required this.currentUser,
     required this.msgsNotifier,
     required this.pinController,
     this.onReplySelected,
     this.onCloseOverlays,
-    this.onRefreshPinnedBar,
     this.inputFocusNode,
     this.itemScrollController,
     this.searchKeyword = '',
@@ -66,7 +63,7 @@ class _ChatMessageState extends State<ChatMessage> {
     widget.pinController.togglePin(
       msg: msg,
       msgsNotifier: widget.msgsNotifier,
-      onStateChanged: widget.onRefreshPinnedBar,
+      onStateChanged: () => setState(() {}),
     );
   }
 
@@ -112,7 +109,7 @@ class _ChatMessageState extends State<ChatMessage> {
         .toList();
     widget.pinController.removeDeletedMessage(
       msg.IdMsg,
-      onStateChanged: widget.onRefreshPinnedBar,
+      onStateChanged: () => setState(() {}),
     );
     focusManager.primaryFocus?.unfocus();
   }
