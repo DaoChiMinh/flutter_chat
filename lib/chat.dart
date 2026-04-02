@@ -188,5 +188,4 @@ class _ChatpageState extends State<Chatpage> {
     );
   }
 }
-//hien tai source code cac component dang de ra ngoai rat nhieu cai linh tinh ma co the xu li o trong dc, tuong tuong o day cac compnent nhu 1 thu vien 
-//ta muon xu li logic ben trong het 
+
