@@ -1,41 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_chat/Component/Chatbox/chat_boxmsg.dart';
+import 'package:flutter_chat/Component/Services/chat_session_scope.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
 
-class ChatSearch extends StatefulWidget implements PreferredSizeWidget {
-  final List<Chatmsgobject> messages;
-  final ValueChanged<String> onJumpToMessage;
-  final VoidCallback? onCloseSearch;
-  final Color backgroundColor;
+class ChatSearch extends StatefulWidget {
   final String hintText;
-  final void Function(
-    String keyword,
-    List<String> matchedIds,
-    String? currentMatchedMessageId,
-  )?
-  onSearchChanged;
+  final VoidCallback? onCloseSearch;
+
   const ChatSearch({
     super.key,
-    required this.messages,
-    required this.onJumpToMessage,
-    this.onCloseSearch,
-    this.onSearchChanged,
-    this.backgroundColor = Colors.red,
     this.hintText = 'Tìm trong đoạn chat',
+    this.onCloseSearch,
   });
 
-  static _ChatSearchState? of(BuildContext context) {
-    return context.findAncestorStateOfType<_ChatSearchState>();
-  }
-
   @override
-  State<ChatSearch> createState() => _ChatSearchState();
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  State<ChatSearch> createState() => ChatSearchState();
 }
 
-class _ChatSearchState extends State<ChatSearch> {
-  bool _isSearching = false;
+class ChatSearchState extends State<ChatSearch> {
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
@@ -43,26 +25,22 @@ class _ChatSearchState extends State<ChatSearch> {
   int _currentIndex = -1;
   String _keyword = '';
 
-  String get searchKeyword => _keyword;
-  List<String> get matchedMessageIds => _matchedIds;
   String? get currentMatchedMessageId =>
       _currentIndex >= 0 && _currentIndex < _matchedIds.length
-      ? _matchedIds[_currentIndex]
-      : null;
+          ? _matchedIds[_currentIndex]
+          : null;
 
-  void _notifySearchChanged() {
-    widget.onSearchChanged?.call(
-      _keyword,
-      _matchedIds,
-      currentMatchedMessageId,
-    );
+  void focusInput() {
+    Future.microtask(() => _searchFocusNode.requestFocus());
   }
 
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    _searchFocusNode.dispose();
-    super.dispose();
+  void _notifySearchChanged() {
+    final session = ChatSessionScopeData.of(context);
+    session.searchHighlightNotifier.value = ChatSearchHighlight(
+      keyword: _keyword,
+      matchedMessageIds: List<String>.from(_matchedIds),
+      currentMatchedMessageId: currentMatchedMessageId,
+    );
   }
 
   String _messageSearchText(Chatmsgobject msg) {
@@ -71,15 +49,12 @@ class _ChatSearchState extends State<ChatSearch> {
     if (msg.Note.trim().isNotEmpty) {
       parts.add(msg.Note.trim());
     }
-
     if (msg.titleUrl?.trim().isNotEmpty == true) {
       parts.add(msg.titleUrl!.trim());
     }
-
     if (msg.descriptioneUrl?.trim().isNotEmpty == true) {
       parts.add(msg.descriptioneUrl!.trim());
     }
-
     if (msg.replyMsg?.Note.trim().isNotEmpty == true) {
       parts.add(msg.replyMsg!.Note.trim());
     }
@@ -88,21 +63,24 @@ class _ChatSearchState extends State<ChatSearch> {
   }
 
   void runSearch(String keyword) {
+    final session = ChatSessionScopeData.of(context);
+    final messages = session.msgsNotifier.value;
     final q = keyword.trim().toLowerCase();
 
     setState(() {
       _keyword = keyword;
     });
-    _notifySearchChanged();
+
     if (q.isEmpty) {
       setState(() {
         _matchedIds = [];
         _currentIndex = -1;
       });
+      _notifySearchChanged();
       return;
     }
 
-    final matched = widget.messages
+    final matched = messages
         .where((msg) => _messageSearchText(msg).contains(q))
         .map((msg) => msg.IdMsg)
         .toList();
@@ -112,34 +90,38 @@ class _ChatSearchState extends State<ChatSearch> {
       _currentIndex = matched.isNotEmpty ? 0 : -1;
     });
 
+    _notifySearchChanged();
+
     if (matched.isNotEmpty) {
-      widget.onJumpToMessage(matched[0]);
+      session.messageController.scrollToMessage(matched[0]);
     }
   }
 
   void goNext() {
     if (_matchedIds.isEmpty) return;
-
+    final session = ChatSessionScopeData.of(context);
     final nextIndex = (_currentIndex + 1) % _matchedIds.length;
 
     setState(() {
       _currentIndex = nextIndex;
     });
+
     _notifySearchChanged();
-    widget.onJumpToMessage(_matchedIds[nextIndex]);
+    session.messageController.scrollToMessage(_matchedIds[nextIndex]);
   }
 
   void goPrev() {
     if (_matchedIds.isEmpty) return;
-
+    final session = ChatSessionScopeData.of(context);
     final prevIndex =
         (_currentIndex - 1 + _matchedIds.length) % _matchedIds.length;
 
     setState(() {
       _currentIndex = prevIndex;
     });
+
     _notifySearchChanged();
-    widget.onJumpToMessage(_matchedIds[prevIndex]);
+    session.messageController.scrollToMessage(_matchedIds[prevIndex]);
   }
 
   void clearSearch() {
@@ -152,89 +134,82 @@ class _ChatSearchState extends State<ChatSearch> {
     _notifySearchChanged();
   }
 
-  void toggleSearch() {
+  void closeSearch() {
+    _searchCtrl.clear();
     setState(() {
-      _isSearching = !_isSearching;
-
-      if (!_isSearching) {
-        _searchCtrl.clear();
-        _keyword = '';
-        _matchedIds = [];
-        _currentIndex = -1;
-        _notifySearchChanged();
-      }
+      _keyword = '';
+      _matchedIds = [];
+      _currentIndex = -1;
     });
+    _notifySearchChanged();
+    widget.onCloseSearch?.call();
+  }
 
-    if (_isSearching) {
-      Future.microtask(() => _searchFocusNode.requestFocus());
-    } else {
-      widget.onCloseSearch?.call();
-    }
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AppBar(
-      backgroundColor: widget.backgroundColor,
-      title: _isSearching
-          ? Container(
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: TextField(
-                controller: _searchCtrl,
-                focusNode: _searchFocusNode,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: widget.hintText,
-                  hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  suffixIcon: _searchCtrl.text.isNotEmpty
-                      ? IconButton(
-                          onPressed: clearSearch,
-                          icon: const Icon(Icons.close, size: 18),
-                        )
-                      : null,
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: TextField(
+              controller: _searchCtrl,
+              focusNode: _searchFocusNode,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: widget.hintText,
+                hintStyle: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 14,
                 ),
-                onChanged: runSearch,
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                suffixIcon: _searchCtrl.text.isNotEmpty
+                    ? IconButton(
+                        onPressed: clearSearch,
+                        icon: const Icon(Icons.close, size: 18),
+                      )
+                    : null,
               ),
-            )
-          : const Text("Chat", style: TextStyle(color: Colors.white)),
-      actions: [
-        if (_isSearching)
-          Padding(
-            padding: const EdgeInsets.only(right: 10),
-            child: Center(
-              child: Text(
-                '${_matchedIds.isEmpty ? 0 : _currentIndex + 1}/${_matchedIds.length}',
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-              ),
+              onChanged: (value) {
+                runSearch(value);
+                setState(() {});
+              },
             ),
           ),
-        IconButton(
-          onPressed: toggleSearch,
-          icon: Icon(
-            _isSearching ? Icons.close : Icons.search,
-            color: Colors.white,
-          ),
         ),
-        if (_isSearching) ...[
-          IconButton(
-            onPressed: _matchedIds.isEmpty ? null : goPrev,
-            icon: const Icon(Icons.keyboard_arrow_up, color: Colors.white),
-          ),
-          IconButton(
-            onPressed: _matchedIds.isEmpty ? null : goNext,
-            icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
-          ),
-        ],
+        const SizedBox(width: 8),
+        Text(
+          '${_matchedIds.isEmpty ? 0 : _currentIndex + 1}/${_matchedIds.length}',
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+        ),
+        IconButton(
+          onPressed: _matchedIds.isEmpty ? null : goPrev,
+          icon: const Icon(Icons.keyboard_arrow_up, color: Colors.white),
+        ),
+        IconButton(
+          onPressed: _matchedIds.isEmpty ? null : goNext,
+          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+        ),
+        IconButton(
+          onPressed: closeSearch,
+          icon: const Icon(Icons.close, color: Colors.white),
+        ),
       ],
     );
   }

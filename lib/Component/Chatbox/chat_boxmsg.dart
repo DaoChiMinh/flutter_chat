@@ -3,7 +3,7 @@ import 'package:flutter/material.dart' as focusManager;
 import 'package:flutter/services.dart';
 import 'package:flutter_chat/Component/Chatbox/chat_approved.dart';
 import 'package:flutter_chat/Component/Chatinput/chat_audio.dart';
-import 'package:flutter_chat/Component/Chatinput/chat_image_gallery.dart';
+import 'package:flutter_chat/Component/Chatbox/chat_image_gallery.dart';
 import 'package:flutter_chat/Component/Chatbox/chat_media_grid.dart';
 import 'package:flutter_chat/Component/Chatbox/chat_message_action_menu.dart';
 import 'package:flutter_chat/Component/Chatbox/chat_message_type.dart';
@@ -11,32 +11,44 @@ import 'package:flutter_chat/Component/Chatbox/chat_pin_message.dart';
 import 'package:flutter_chat/Component/Chatbox/chat_react.dart';
 import 'package:flutter_chat/Component/Chatinput/chat_reply_preview.dart';
 import 'package:flutter_chat/Component/Services/chat_view_page.dart';
+import 'package:flutter_chat/Component/Services/chat_session_scope.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:flutter_chat/utils.dart';
 
-class ChatMessage extends StatefulWidget {
-  final String currentUser = "Nguyen Quang Minh";
-  final ValueNotifier<List<Chatmsgobject>> msgsNotifier;
-  final ChatPinController pinController;
-  final ValueChanged<Chatmsgobject>? onReplySelected;
-  final VoidCallback? onCloseOverlays;
-  final FocusNode? inputFocusNode;
-  final ItemScrollController? itemScrollController;
-  final String searchKeyword;
+class ChatMessageController {
+  void Function(String messageId)? _scrollTo;
+
+  void attachScroll(void Function(String messageId) fn) => _scrollTo = fn;
+
+  void detach() => _scrollTo = null;
+
+  void scrollToMessage(String messageId) => _scrollTo?.call(messageId);
+}
+
+/// Trạng thái highlight kết quả tìm trong đoạn chat.
+class ChatSearchHighlight {
+  final String keyword;
   final List<String> matchedMessageIds;
   final String? currentMatchedMessageId;
-  const ChatMessage({
-    super.key,
-    required this.msgsNotifier,
-    required this.pinController,
-    this.onReplySelected,
-    this.onCloseOverlays,
-    this.inputFocusNode,
-    this.itemScrollController,
-    this.searchKeyword = '',
+
+  const ChatSearchHighlight({
+    this.keyword = '',
     this.matchedMessageIds = const [],
     this.currentMatchedMessageId,
+  });
+}
+
+class ChatMessage extends StatefulWidget {
+  final String currentUser = "Nguyen Quang Minh";
+  final bool showPinnedBar;
+  final VoidCallback? onCloseOverlays;
+  final FocusNode? inputFocusNode;
+  const ChatMessage({
+    super.key,
+    this.showPinnedBar = true,
+    this.onCloseOverlays,
+    this.inputFocusNode,
   });
 
   @override
@@ -44,6 +56,11 @@ class ChatMessage extends StatefulWidget {
 }
 
 class _ChatMessageState extends State<ChatMessage> {
+  late final ChatPinController _pinController;
+  late final ItemScrollController _itemScrollController;
+  ValueNotifier<List<Chatmsgobject>>? _msgsNv;
+  ChatMessageController? _scrollController;
+  int _prevMsgCount = 0;
   String? _longPressedApproveMsgId;
 
   bool _isSameDay(DateTime? a, DateTime? b) {
@@ -52,39 +69,40 @@ class _ChatMessageState extends State<ChatMessage> {
   }
 
   void _handleApproveStatus(Chatmsgobject msg, String status) {
-    final list = [...widget.msgsNotifier.value];
+    final list = [..._msgsNv!.value];
     final i = list.indexWhere((e) => e.IdMsg == msg.IdMsg);
     if (i == -1) return;
     list[i].approvedStatus = status;
-    widget.msgsNotifier.value = list;
+    _msgsNv!.value = list;
   }
 
   void _handlePin(Chatmsgobject msg) {
-    widget.pinController.togglePin(
+    _pinController.togglePin(
       msg: msg,
-      msgsNotifier: widget.msgsNotifier,
+      msgsNotifier: _msgsNv!,
       onStateChanged: () => setState(() {}),
     );
   }
 
   void _handleReaction(Chatmsgobject msg, String emoji) {
-    final list = [...widget.msgsNotifier.value];
+    final list = [..._msgsNv!.value];
     final i = list.indexWhere((e) => e.IdMsg == msg.IdMsg);
     if (i == -1) return;
     list[i].setReaction(widget.currentUser, emoji);
-    widget.msgsNotifier.value = list;
+    _msgsNv!.value = list;
   }
 
   void _handleRemoveMyReaction(Chatmsgobject msg) {
-    final list = [...widget.msgsNotifier.value];
+    final list = [..._msgsNv!.value];
     final i = list.indexWhere((e) => e.IdMsg == msg.IdMsg);
     if (i == -1) return;
     list[i].removeReactionOfUser(widget.currentUser);
-    widget.msgsNotifier.value = list;
+    _msgsNv!.value = list;
   }
 
   void _handleReply(Chatmsgobject msg) {
-    widget.onReplySelected?.call(msg);
+    final session = ChatSessionScopeData.of(context);
+    session.replyingToNotifier.value = msg;
     widget.onCloseOverlays?.call();
     Future.delayed(const Duration(milliseconds: 50), () {
       widget.inputFocusNode?.requestFocus();
@@ -92,7 +110,7 @@ class _ChatMessageState extends State<ChatMessage> {
   }
 
   void _handleRecall(Chatmsgobject msg) {
-    final list = [...widget.msgsNotifier.value];
+    final list = [..._msgsNv!.value];
     final i = list.indexWhere((e) => e.IdMsg == msg.IdMsg);
     if (i == -1) return;
     list[i].isRecalled = true;
@@ -100,14 +118,12 @@ class _ChatMessageState extends State<ChatMessage> {
     list[i].strDataFile = [];
     list[i].strTypeFile = "";
     list[i].replyMsg = null;
-    widget.msgsNotifier.value = list;
+    _msgsNv!.value = list;
   }
 
   void _handleDelete(Chatmsgobject msg) {
-    widget.msgsNotifier.value = widget.msgsNotifier.value
-        .where((e) => e.IdMsg != msg.IdMsg)
-        .toList();
-    widget.pinController.removeDeletedMessage(
+    _msgsNv!.value = _msgsNv!.value.where((e) => e.IdMsg != msg.IdMsg).toList();
+    _pinController.removeDeletedMessage(
       msg.IdMsg,
       onStateChanged: () => setState(() {}),
     );
@@ -120,115 +136,197 @@ class _ChatMessageState extends State<ChatMessage> {
   }
 
   void _scrollToMessage(String idMsg) {
-    final list = widget.msgsNotifier.value;
+    final list = _msgsNv!.value;
     final index = list.indexWhere((e) => e.IdMsg == idMsg);
-    if (index == -1 || widget.itemScrollController == null) return;
+    if (index == -1) return;
     final reverseIndex = list.length - 1 - index;
-    widget.itemScrollController!.scrollTo(
+    _itemScrollController.scrollTo(
       index: reverseIndex,
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
     );
   }
 
+  void _scrollToBottom() {
+    if (_msgsNv!.value.isEmpty) return;
+    _itemScrollController.scrollTo(
+      index: 0,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _onMsgsLengthChanged() {
+    final nv = _msgsNv;
+    if (nv == null) return;
+    final next = nv.value.length;
+    if (next > _prevMsgCount) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scrollToBottom();
+      });
+    }
+    _prevMsgCount = next;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _pinController = ChatPinController();
+    _itemScrollController = ItemScrollController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final session = ChatSessionScopeData.of(context);
+    if (_msgsNv == null) {
+      _msgsNv = session.msgsNotifier;
+      _scrollController = session.messageController;
+      _prevMsgCount = _msgsNv!.value.length;
+      _msgsNv!.addListener(_onMsgsLengthChanged);
+      _scrollController!.attachScroll(_scrollToMessage);
+    }
+  }
+
+  @override
+  void dispose() {
+    _msgsNv?.removeListener(_onMsgsLengthChanged);
+    _scrollController?.detach();
+    _pinController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final session = ChatSessionScopeData.of(context);
     return ValueListenableBuilder<List<Chatmsgobject>>(
-      valueListenable: widget.msgsNotifier,
+      valueListenable: session.msgsNotifier,
       builder: (context, msgs, _) {
-        if (msgs.isEmpty) {
-          return const Center(
-            child: Text(
-              "Hãy khởi đầu cuộc trò chuyện bằng một tin nhắn 😀",
-              style: TextStyle(color: Colors.grey),
-            ),
-          );
-        }
-
-        return GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: () {
-            focusManager.primaryFocus?.unfocus();
-          },
-          child: ScrollablePositionedList.builder(
-            itemScrollController: widget.itemScrollController,
-            reverse: true,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            itemCount: msgs.length,
-            itemBuilder: (context, index) {
-              final originalIndex = msgs.length - 1 - index;
-              final msg = msgs[originalIndex];
-
-              final Chatmsgobject? prevMsgInTime = originalIndex > 0
-                  ? msgs[originalIndex - 1]
-                  : null;
-
-              final bool showDateHeader =
-                  prevMsgInTime == null ||
-                  !_isSameDay(msg.Send_Date, prevMsgInTime.Send_Date);
-
-              return Column(
-                children: [
-                  if (showDateHeader)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            formatDate(msg.Send_Date),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.black54,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
+        return ValueListenableBuilder<ChatSearchHighlight>(
+          valueListenable: session.searchHighlightNotifier,
+          builder: (context, highlight, _) {
+            final empty = msgs.isEmpty
+                ? const Expanded(
+                    child: Center(
+                      child: Text(
+                        "Hãy khởi đầu cuộc trò chuyện bằng một tin nhắn 😀",
+                        style: TextStyle(color: Colors.grey),
                       ),
                     ),
-                  _MessageBubble(
-                    key: ValueKey(msg.IdMsg),
-                    currentUser: widget.currentUser,
-                    msg: msg,
-                    onReply: _handleReply,
-                    onRecall: _handleRecall,
-                    onDelete: _handleDelete,
-                    onTapReplyPreview: _scrollToMessage,
-                    onReaction: _handleReaction,
-                    onRemoveMyReaction: _handleRemoveMyReaction,
-                    onPin: _handlePin,
-                    onForward: _handleForward,
-                    onApproveStatus: (targetMsg, status) {
-                      _handleApproveStatus(targetMsg, status);
-                      setState(() {
-                        _longPressedApproveMsgId = null;
-                      });
-                    },
-                    showApproveActions: _longPressedApproveMsgId == msg.IdMsg,
-                    onToggleApproveActions: () {
-                      setState(() {
-                        if (_longPressedApproveMsgId == msg.IdMsg) {
-                          _longPressedApproveMsgId = null;
-                        } else {
-                          _longPressedApproveMsgId = msg.IdMsg;
-                        }
-                      });
-                    },
-                    searchKeyword: widget.searchKeyword,
-                    matchedMessageIds: widget.matchedMessageIds,
-                    currentMatchedMessageId: widget.currentMatchedMessageId,
+                  )
+                : Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: () {
+                        focusManager.primaryFocus?.unfocus();
+                      },
+                      child: ScrollablePositionedList.builder(
+                        itemScrollController: _itemScrollController,
+                        reverse: true,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                        itemCount: msgs.length,
+                        itemBuilder: (context, index) {
+                          final originalIndex = msgs.length - 1 - index;
+                          final msg = msgs[originalIndex];
+
+                          final Chatmsgobject? prevMsgInTime = originalIndex > 0
+                              ? msgs[originalIndex - 1]
+                              : null;
+
+                          final bool showDateHeader =
+                              prevMsgInTime == null ||
+                              !_isSameDay(
+                                msg.Send_Date,
+                                prevMsgInTime.Send_Date,
+                              );
+
+                          return Column(
+                            children: [
+                              if (showDateHeader)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  child: Center(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        formatDate(msg.Send_Date),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.black54,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              _MessageBubble(
+                                key: ValueKey(msg.IdMsg),
+                                currentUser: widget.currentUser,
+                                msg: msg,
+                                onReply: _handleReply,
+                                onRecall: _handleRecall,
+                                onDelete: _handleDelete,
+                                onTapReplyPreview: _scrollToMessage,
+                                onReaction: _handleReaction,
+                                onRemoveMyReaction: _handleRemoveMyReaction,
+                                onPin: _handlePin,
+                                onForward: _handleForward,
+                                onApproveStatus: (targetMsg, status) {
+                                  _handleApproveStatus(targetMsg, status);
+                                  setState(() {
+                                    _longPressedApproveMsgId = null;
+                                  });
+                                },
+                                showApproveActions:
+                                    _longPressedApproveMsgId == msg.IdMsg,
+                                onToggleApproveActions: () {
+                                  setState(() {
+                                    if (_longPressedApproveMsgId == msg.IdMsg) {
+                                      _longPressedApproveMsgId = null;
+                                    } else {
+                                      _longPressedApproveMsgId = msg.IdMsg;
+                                    }
+                                  });
+                                },
+                                searchKeyword: highlight.keyword,
+                                matchedMessageIds: highlight.matchedMessageIds,
+                                currentMatchedMessageId:
+                                    highlight.currentMatchedMessageId,
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  );
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (widget.showPinnedBar)
+                  PinnedMessageBar(
+                    pinController: _pinController,
+                    msgsNotifier: session.msgsNotifier,
+                    onScrollToMessage: _scrollToMessage,
+                    onTogglePin: _handlePin,
                   ),
-                ],
-              );
-            },
-          ),
+                empty,
+              ],
+            );
+          },
         );
       },
     );

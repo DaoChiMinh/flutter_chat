@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_chat/Component/Chatbox/chat_approved.dart';
-import 'package:flutter_chat/Component/Chatinput/chat_image_gallery.dart';
+import 'package:flutter_chat/Component/Chatbox/chat_image_gallery.dart';
 import 'package:flutter_chat/Component/Chatbox/chat_media_grid.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
 import 'package:flutter_chat/utils.dart';

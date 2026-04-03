@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_chat/Component/Chatinput/chat_audio.dart';
 import 'package:flutter_chat/Component/Chatinput/chat_attach_menu.dart';
 import 'package:flutter_chat/Component/Chatinput/chat_emoji.dart';
+import 'package:flutter_chat/Component/Chatinput/chat_reply_preview.dart';
 import 'package:flutter_chat/Component/Chatinput/chat_url_preview.dart';
+import 'package:flutter_chat/Component/Services/chat_session_scope.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -61,11 +63,9 @@ class ChatInput extends StatefulWidget {
     required this.onShowGalleryChanged,
     required this.onShowAttachMenuChanged,
     this.externalFocusNode, // ★ NEW
-    this.onRefreshMessages,
   });
 
   final ValueChanged<Chatmsgobject> onSend;
-  final VoidCallback? onRefreshMessages;
   final bool showEmoji;
   final bool showGallery;
   final bool showAttachMenu; // ★ NEW
@@ -444,7 +444,6 @@ class _ChatInputState extends State<ChatInput> {
     } catch (_) {
     } finally {
       msg.isUrlFetchDone = true;
-      widget.onRefreshMessages?.call();
     }
   }
 
@@ -492,7 +491,8 @@ class _ChatInputState extends State<ChatInput> {
   Widget build(BuildContext context) {
     final showGallery = widget.showGallery && !_state.isEditing;
     final showAttachMenu = widget.showAttachMenu && !_state.isEditing;
-
+    final session = ChatSessionScopeData.of(context);
+    final replyingToNotifier = session.replyingToNotifier;
     // Khi đang thu âm → hiện overlay ghi âm
     if (_isRecording) {
       return ChatVoiceRecordingOverlay(
@@ -518,6 +518,33 @@ class _ChatInputState extends State<ChatInput> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          ValueListenableBuilder<Chatmsgobject?>(
+            valueListenable: replyingToNotifier,
+            builder: (context, reply, _) {
+              if (reply == null) return const SizedBox.shrink();
+              return Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE0E0E0)),
+                ),
+                child: Row(
+                  children: [
+                    Container(width: 3, height: 40, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    Expanded(child: ReplyInputPreview(msg: reply)),
+                    IconButton(
+                      onPressed: () => replyingToNotifier.value = null,
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           // ── Smart URL Preview Card ──
           if (_urlState != null)
             _SmartUrlPreview(

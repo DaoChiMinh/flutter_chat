@@ -96,14 +96,14 @@ class ChatPinController {
 class PinnedMessageBar extends StatefulWidget {
   final ChatPinController pinController;
   final ValueNotifier<List<Chatmsgobject>> msgsNotifier;
-  final ValueChanged<String> onTapPinnedMessage;
+  final ValueChanged<String> onScrollToMessage;
   final ValueChanged<Chatmsgobject> onTogglePin;
 
   const PinnedMessageBar({
     super.key,
     required this.pinController,
     required this.msgsNotifier,
-    required this.onTapPinnedMessage,
+    required this.onScrollToMessage,
     required this.onTogglePin,
   });
 
@@ -187,7 +187,7 @@ class _PinnedMessageBarState extends State<PinnedMessageBar> {
                   Expanded(
                     child: InkWell(
                       borderRadius: BorderRadius.circular(8),
-                      onTap: () => widget.onTapPinnedMessage(first.IdMsg),
+                      onTap: () => widget.onScrollToMessage(first.IdMsg),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -301,7 +301,7 @@ class _PinnedMessageBarState extends State<PinnedMessageBar> {
                             onTap: () {
                               _closePanel();
                               Future.microtask(
-                                () => widget.onTapPinnedMessage(m.IdMsg),
+                                () => widget.onScrollToMessage(m.IdMsg),
                               );
                             },
                             child: Container(
