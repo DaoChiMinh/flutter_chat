@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_chat/Component/chat_boxmsg.dart';
-import 'package:flutter_chat/Component/chat_input.dart';
-import 'package:flutter_chat/Component/chat_pin_message.dart';
-import 'package:flutter_chat/Component/chat_reply_preview.dart';
-import 'package:flutter_chat/Component/chat_search.dart';
+import 'package:flutter_chat/Component/Chatbox/chat_boxmsg.dart';
+import 'package:flutter_chat/Component/Chatinput/chat_input.dart';
+import 'package:flutter_chat/Component/Chatbox/chat_pin_message.dart';
+import 'package:flutter_chat/Component/Chatinput/chat_reply_preview.dart';
+import 'package:flutter_chat/Component/Services/chat_search.dart';
 import 'package:flutter_chat/Module/chatData.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
