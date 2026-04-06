@@ -1,6 +1,4 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_chat/Component/Chatbox/chat_boxmsg.dart';
-import 'package:flutter_chat/Module/chatobj.dart';
+import 'package:flutter_chat/chat_frame.dart';
 
 class ChatSessionScope extends StatefulWidget {
   const ChatSessionScope({

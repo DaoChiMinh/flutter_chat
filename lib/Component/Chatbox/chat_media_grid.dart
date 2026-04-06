@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_chat/Component/Chatbox/chat_message_type.dart';
 import 'package:flutter_chat/Module/chatobj.dart';

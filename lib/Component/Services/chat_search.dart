@@ -1,7 +1,17 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_chat/Component/Chatbox/chat_boxmsg.dart';
-import 'package:flutter_chat/Component/Services/chat_session_scope.dart';
-import 'package:flutter_chat/Module/chatobj.dart';
+import 'package:flutter_chat/chat_frame.dart';
+
+/// Trạng thái highlight kết quả tìm trong đoạn chat.
+class ChatSearchHighlight {
+  final String keyword;
+  final List<String> matchedMessageIds;
+  final String? currentMatchedMessageId;
+
+  const ChatSearchHighlight({
+    this.keyword = '',
+    this.matchedMessageIds = const [],
+    this.currentMatchedMessageId,
+  });
+}
 
 class ChatSearch extends StatefulWidget {
   final String hintText;
@@ -27,8 +37,8 @@ class ChatSearchState extends State<ChatSearch> {
 
   String? get currentMatchedMessageId =>
       _currentIndex >= 0 && _currentIndex < _matchedIds.length
-          ? _matchedIds[_currentIndex]
-          : null;
+      ? _matchedIds[_currentIndex]
+      : null;
 
   void focusInput() {
     Future.microtask(() => _searchFocusNode.requestFocus());
@@ -169,10 +179,7 @@ class ChatSearchState extends State<ChatSearch> {
               autofocus: true,
               decoration: InputDecoration(
                 hintText: widget.hintText,
-                hintStyle: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 14,
-                ),
+                hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(

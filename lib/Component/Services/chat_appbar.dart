@@ -1,6 +1,4 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_chat/Component/Services/chat_call.dart';
-import 'package:flutter_chat/Component/Services/chat_search.dart';
+import 'package:flutter_chat/chat_frame.dart';
 
 class ChatAppBar extends StatefulWidget implements PreferredSizeWidget {
   final Color backgroundColor;

@@ -1,11 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_chat/chat_frame.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
-import 'package:flutter_chat/Component/Chatbox/chat_boxmsg.dart';
-import 'package:flutter_chat/Component/Services/chat_appbar.dart';
-import 'package:flutter_chat/Component/Services/chat_session_scope.dart';
-import 'package:flutter_chat/Component/Chatinput/chat_input.dart';
-import 'package:flutter_chat/Module/chatData.dart';
-import 'package:flutter_chat/Module/chatobj.dart';
 
 class Chatpage extends StatefulWidget {
   const Chatpage({super.key});

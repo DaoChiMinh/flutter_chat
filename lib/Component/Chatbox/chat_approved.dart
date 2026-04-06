@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_chat/chat_frame.dart';
 
 Widget buildApprovedStatusBadge(String status) {
   final approved = status == 'approved';

@@ -71,10 +71,11 @@ class ChatCall extends StatelessWidget {
     return IconButton(
       onPressed: () async {
         debugPrint('ICON TAPPED');
-        await testIncomingCall();
+        await testOutgoingCall();
       },
       icon: const Icon(Icons.phone, color: Colors.white),
       tooltip: 'Gọi điện',
     );
   }
 }
+

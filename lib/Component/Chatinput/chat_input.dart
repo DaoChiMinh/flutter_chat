@@ -1,12 +1,5 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:flutter_chat/Component/Chatinput/chat_audio.dart';
-import 'package:flutter_chat/Component/Chatinput/chat_attach_menu.dart';
-import 'package:flutter_chat/Component/Chatinput/chat_emoji.dart';
-import 'package:flutter_chat/Component/Chatinput/chat_reply_preview.dart';
-import 'package:flutter_chat/Component/Chatinput/chat_url_preview.dart';
-import 'package:flutter_chat/Component/Services/chat_session_scope.dart';
-import 'package:flutter_chat/Module/chatobj.dart';
+import 'package:flutter_chat/chat_frame.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:photo_manager_image_provider/photo_manager_image_provider.dart';
