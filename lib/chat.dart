@@ -54,50 +54,57 @@ class _ChatpageState extends State<Chatpage> {
   Widget build(BuildContext context) {
     return ChatSessionScope(
       msgsNotifier: _msgsNotifier,
-      child: Scaffold(
-        appBar: ChatAppBar(
-          // onCloseSearch: () {
-          //   //FocusManager.instance.primaryFocus?.unfocus();
-          // },
-          title: "Chat",
-        ),
-        resizeToAvoidBottomInset: true,
-        body: Container(
-          color: const Color(0xffE4E8F3),
-          child: Column(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    FocusManager.instance.primaryFocus?.unfocus();
-                    _closeInputPanels();
-                  },
-                  behavior: HitTestBehavior.translucent,
-                  child: ChatMessage(
-                    showPinnedBar: true,
-                    inputFocusNode: _inputFocusNode,
-                    onCloseOverlays: _closeInputPanels,
+      child: Builder(
+        builder: (innerContext) {
+          return Scaffold(
+            appBar: ChatAppBar(title: "Chat"),
+            resizeToAvoidBottomInset: true,
+            body: Container(
+              color: const Color(0xffE4E8F3),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        _closeInputPanels();
+                      },
+                      behavior: HitTestBehavior.translucent,
+                      child: ChatMessage(
+                        showPinnedBar: true,
+                        inputFocusNode: _inputFocusNode,
+                        onCloseOverlays: _closeInputPanels,
+                      ),
+                    ),
                   ),
-                ),
+                  ChatInput(
+                    externalFocusNode: _inputFocusNode,
+                    showEmoji: _showEmoji,
+                    showGallery: _showGallery,
+                    showAttachMenu: _showAttachMenu,
+                    onShowEmojiChanged: (v) => setState(() => _showEmoji = v),
+                    onShowGalleryChanged: (v) =>
+                        setState(() => _showGallery = v),
+                    onShowAttachMenuChanged: (v) =>
+                        setState(() => _showAttachMenu = v),
+                    onSend: (msg) {
+                      final session = ChatSessionScopeData.of(innerContext);
+
+                      msg.IdMsg =
+                          'msg_${DateTime.now().microsecondsSinceEpoch}';
+                      msg.replyMsg = session.replyingToNotifier.value;
+
+                      _msgsNotifier.value = [..._msgsNotifier.value, msg];
+
+                      session.replyingToNotifier.value = null;
+                      _closeInputPanels();
+                    },
+                  ),
+                ],
               ),
-              ChatInput(
-                externalFocusNode: _inputFocusNode,
-                showEmoji: _showEmoji,
-                showGallery: _showGallery,
-                showAttachMenu: _showAttachMenu,
-                onShowEmojiChanged: (v) => setState(() => _showEmoji = v),
-                onShowGalleryChanged: (v) => setState(() => _showGallery = v),
-                onShowAttachMenuChanged: (v) =>
-                    setState(() => _showAttachMenu = v),
-                onSend: (msg) {
-                  msg.IdMsg = 'msg_${DateTime.now().microsecondsSinceEpoch}';
-                  _msgsNotifier.value = [..._msgsNotifier.value, msg];
-                  _closeInputPanels();
-                },
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
