@@ -143,7 +143,7 @@ class ChatAttachMenuPanel extends StatelessWidget {
     } else {
       note = fileName;
     }
-    
+  
     onSend(
       Chatmsgobject()
         ..Comment = "minhdc"
@@ -248,7 +248,7 @@ class _AttachMenuCellState extends State<_AttachMenuCell>
             ),
 
             const SizedBox(height: 8),
-
+            //
             // ── Label ──
             Text(
               widget.item.label,

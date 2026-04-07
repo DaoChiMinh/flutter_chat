@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_chat/Module/chatobj.dart';
+import 'package:intl/intl.dart';
+
 
 String buildTitle(String type) {
   switch (type) {
@@ -47,21 +49,11 @@ bool shouldShowNoteText(ChatmsgObjtype type) {
       type == ChatmsgObjtype.video;
 }
 
-String formatDate(DateTime? dt) {
-  if (dt == null) return '';
-  final dd = dt.day.toString().padLeft(2, '0');
-  final mm = dt.month.toString().padLeft(2, '0');
-  final yyyy = dt.year.toString();
-  return '$dd/$mm/$yyyy';
+String formatTime(DateTime? dt, String pattern) {
+  return DateFormat(pattern).format(dt!);
 }
 
-String formatTime(DateTime? dt) {
-  if (dt == null) return "";
-  final hh = dt.hour.toString().padLeft(2, '0');
-  final mm = dt.minute.toString().padLeft(2, '0');
-  return "$hh:$mm";
-}
-
+//snackbar giua man hinh
 void showSnackBar(BuildContext context, String text) {
   final height = MediaQuery.of(context).size.height;
 

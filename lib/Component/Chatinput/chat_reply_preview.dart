@@ -123,7 +123,6 @@ class ReplyInputPreview extends StatelessWidget {
         child: const Icon(Icons.videocam, color: Colors.grey, size: 18),
       );
     }
-
     return image;
   }
 
@@ -157,7 +156,7 @@ class ReplyPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final type = reply.objtype();
-
+    
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -179,7 +178,6 @@ class ReplyPreview extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-
             Expanded(
               child: SizedBox(
                 height: 50,

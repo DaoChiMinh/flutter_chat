@@ -17,7 +17,7 @@ export 'Component/Chatinput/chat_reply_preview.dart';
 export 'Component/Chatinput/chat_emoji.dart';
 export 'Component/Chatinput/chat_audio.dart';
 export 'Component/Services/chat_appbar.dart';
-export 'Component/Services/chat_call.dart';
+export 'Component/Services/Call/chat_call.dart';
 export 'Component/Services/chat_search.dart';
 export 'Component/Services/chat_session_scope.dart';
 export 'Component/Services/chat_view_page.dart';

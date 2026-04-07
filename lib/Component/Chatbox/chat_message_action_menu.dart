@@ -477,7 +477,7 @@ class _MessagePreviewBubble extends StatelessWidget {
 
           const SizedBox(height: 8),
           Text(
-            formatTime(msg.Send_Date),
+            formatTime(msg.Send_Date, 'HH:mm'),
             style: TextStyle(
               fontSize: 12,
               color: Colors.grey.shade500,

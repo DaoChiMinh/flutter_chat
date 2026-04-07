@@ -235,7 +235,7 @@ class _ChatMessageState extends State<ChatMessage> {
                                         ),
                                       ),
                                       child: Text(
-                                        formatDate(msg.Send_Date),
+                                        formatTime(msg.Send_Date, 'dd/MM/yyyy'),
                                         style: const TextStyle(
                                           fontSize: 12,
                                           color: Colors.black54,
